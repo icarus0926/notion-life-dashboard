@@ -825,12 +825,13 @@ async function mountSteps(panel, pageId, onChange){
       const s=steps.find(x=>x.id===bid); if(s) s.checked=checked; render();
       try{ const r=await apiPost('/api/step-toggle',{pageId,blockId:bid,checked}); onChange&&onChange(r.percent,r.total,r.done);
         const arr=STEP_CACHE[pageId]; if(Array.isArray(arr)){ const cs=arr.find(x=>x.id===bid); if(cs) cs.checked=checked; }
-        rerenderGantts(); syncDailyFromStep(bid,checked); }
+        rerenderGantts(); syncDailyFromStep(bid,checked); syncWeeklyFromSteps(pageId, r.total, r.done); }
       catch(err){ console.error(err); await reload().catch(()=>{}); toast('网络波动,已同步'); }
     }));
     panel.querySelectorAll('[data-delstep]').forEach(x=>x.addEventListener('click',async e=>{
       const bid=e.target.dataset.delstep; steps=steps.filter(s=>s.id!==bid); render();
-      try{ const r=await apiPost('/api/step-delete',{pageId,blockId:bid}); onChange&&onChange(r.percent,r.total,r.done); }
+      try{ const r=await apiPost('/api/step-delete',{pageId,blockId:bid}); onChange&&onChange(r.percent,r.total,r.done);
+        syncWeeklyFromSteps(pageId, r.total, r.done); }
       catch(err){ console.error(err); await reload().catch(()=>{}); toast('网络波动,已同步'); }
     }));
     panel.querySelectorAll('[data-editstep]').forEach(x=>x.addEventListener('click',e=>{
@@ -845,6 +846,7 @@ async function mountSteps(panel, pageId, onChange){
     const add=async()=>{ const text=inp.value.trim(); if(!text) return;
       try{ const r=await apiPost('/api/step-add',{pageId,text}); steps.push(r.step); render();
         panel.querySelector('.step-input')?.focus(); onChange&&onChange(r.percent,r.total,r.done);
+        syncWeeklyFromSteps(pageId, r.total, r.done);
       }catch(err){ console.error(err); await reload().catch(()=>{}); toast('网络波动,已同步'); } };
     btn.addEventListener('click',add); inp.addEventListener('keydown',e=>{ if(e.key==='Enter') add(); });
   }
@@ -1110,7 +1112,7 @@ function updateTaskProgressUI(monthlyId){
 }
 function weekRow(w){
   const tcls = w.type==='工作'?'work':'growth';
-  const canStep = !!w.monthlyId;
+  const canStep = true;   // 月任务步骤在关联月度页,独立周任务步骤在自身页
   return `<div class="wentry">
     <div class="witem ${w.done?'checked':''}" data-id="${w.id}">
       ${canStep?`<span class="wstep-toggle" data-wid="${w.id}" title="步骤">▸</span>`:'<span class="wstep-none"></span>'}
@@ -1120,7 +1122,7 @@ function weekRow(w){
 }
 function dayRow(w){
   const tcls = w.type==='工作'?'work':'growth';
-  const canStep = !!w.monthlyId;
+  const canStep = true;
   return `<div class="wentry">
     <div class="dayitem ${w.done?'checked':''}" data-id="${w.id}">
       ${canStep?`<span class="dstep-toggle" data-dstep="${w.id}" title="展开步骤,可点/拖步骤加入今日待办">▸</span>`:'<span class="wstep-none"></span>'}
@@ -1141,16 +1143,16 @@ function bindDaySteps(){
   // 点任务整行 = 展开/收起步骤(避开任务完成复选框)
   document.querySelectorAll('#daylist .dayitem[data-id]').forEach(row=>row.addEventListener('click',e=>{
     if(e.target.closest('input')) return;
-    const w=DATA.weekly.find(x=>x.id===row.dataset.id);
-    if(w&&w.monthlyId) toggleDayPanel(row.dataset.id);
+    if(DATA.weekly.some(x=>x.id===row.dataset.id)) toggleDayPanel(row.dataset.id);
   }));
 }
 // 每日页步骤面板:可勾选/增删(与甘特同一套操作,共用 STEP_CACHE),未完成步骤可点/拖加入当日待办
 async function mountDaySteps(panel, w){
-  let steps=STEP_CACHE[w.monthlyId];
+  const host=stepHost(w);
+  let steps=STEP_CACHE[host];
   if(!Array.isArray(steps)){
     panel.innerHTML='<div class="step-loading">加载步骤…</div>';
-    try{ const r=await apiGet('/api/steps?pageId='+w.monthlyId); steps=r.steps||[]; STEP_CACHE[w.monthlyId]=steps; }
+    try{ const r=await apiGet('/api/steps?pageId='+host); steps=r.steps||[]; STEP_CACHE[host]=steps; }
     catch(e){ console.error(e); panel.innerHTML='<div class="step-loading">加载失败,再点一次重试</div>'; return; }
   }
   const day=viewDayStr();
@@ -1166,16 +1168,17 @@ async function mountDaySteps(panel, w){
       ${s.checked?'':(dup?`<span class="dtag">已在${dayLab}</span>`:`<span class="dstep-add" title="加入${dayLab}待办">＋${dayLab}</span>`)}
       <span class="dsedit" data-bid="${s.id}" title="修改步骤名称">✎</span><span class="dsdel" data-bid="${s.id}" title="删除步骤">×</span></div>`;
   }).join('')+addRow;
-  const refreshAll=(r)=>{ const m=DATA.monthly.find(x=>x.id===w.monthlyId);
+  const refreshAll=(r)=>{ const m=DATA.monthly.find(x=>x.id===host);
     if(m&&r&&r.percent!=null){ m.p=r.percent; m.stepTotal=r.total; renderMonthly(); }
-    rerenderGantts(); refreshDayStepPanels(); updateTaskProgressUI(w.monthlyId); };
-  // 勾选步骤:同步月度完成度/甘特/当日待办
+    rerenderGantts(); refreshDayStepPanels(); updateTaskProgressUI(host);
+    if(r) syncWeeklyFromSteps(host, r.total, r.done); };
+  // 勾选步骤:同步完成度/甘特/当日待办/周任务自动归档
   panel.querySelectorAll('.dscb').forEach(cb=>{
     cb.addEventListener('click',e=>e.stopPropagation());
     cb.addEventListener('change',async ()=>{
       const s=steps.find(x=>x.id===cb.dataset.bid); if(!s) return;
       const old=s.checked; s.checked=cb.checked;
-      try{ const r=await apiPost('/api/step-toggle',{pageId:w.monthlyId,blockId:s.id,checked:s.checked});
+      try{ const r=await apiPost('/api/step-toggle',{pageId:host,blockId:s.id,checked:s.checked});
         syncDailyFromStep(s.id, s.checked); refreshAll(r); }
       catch(err){ console.error(err); s.checked=old; refreshDayStepPanels(); toast('网络波动,请重试'); }
     });
@@ -1185,14 +1188,14 @@ async function mountDaySteps(panel, w){
     ed.addEventListener('click',e=>{ e.stopPropagation();
       const s=steps.find(x=>x.id===ed.dataset.bid); if(!s) return;
       const span=ed.closest('.dstep-item').querySelector('.dst');
-      inlineEditText(span, s.text, text=>renameStepCommit(w.monthlyId, s.id, text)); });
+      inlineEditText(span, s.text, text=>renameStepCommit(host, s.id, text)); });
   });
   // × 删除步骤(悬停显示)
   panel.querySelectorAll('.dsdel').forEach(del=>{
     del.addEventListener('click',async e=>{ e.stopPropagation();
       const s=steps.find(x=>x.id===del.dataset.bid); if(!s) return;
       if(!confirm('删除步骤「'+s.text+'」?')) return;
-      try{ const r=await apiPost('/api/step-delete',{pageId:w.monthlyId,blockId:s.id});
+      try{ const r=await apiPost('/api/step-delete',{pageId:host,blockId:s.id});
         const k=steps.indexOf(s); if(k>=0) steps.splice(k,1);
         refreshAll(r); toast('步骤已删除'); }
       catch(err){ console.error(err); await reload().catch(()=>{}); toast('网络波动,已同步'); }
@@ -1205,7 +1208,7 @@ async function mountDaySteps(panel, w){
       if(e.key!=='Enter') return;
       const text=inp.value.trim(); if(!text) return;
       inp.disabled=true;
-      try{ const r=await apiPost('/api/step-add',{pageId:w.monthlyId,text});
+      try{ const r=await apiPost('/api/step-add',{pageId:host,text});
         steps.push({id:r.step.id,text,checked:false,s:null,e:null});
         refreshAll(r); toast('步骤已添加');
         const ni=document.getElementById(panel.id)?.querySelector('.dstep-addinp'); if(ni) ni.focus(); }
@@ -1216,16 +1219,16 @@ async function mountDaySteps(panel, w){
   panel.querySelectorAll('.dstep-item[data-bid]').forEach(row=>{
     const s=steps.find(x=>x.id===row.dataset.bid); if(!s) return;
     row.addEventListener('click',e=>{ e.stopPropagation();
-      inlineEditText(row.querySelector('.dst'), s.text, text=>renameStepCommit(w.monthlyId, s.id, text)); });
+      inlineEditText(row.querySelector('.dst'), s.text, text=>renameStepCommit(host, s.id, text)); });
     if(row.getAttribute('draggable')==='true'){
-      row.addEventListener('dragstart',()=>{ dragged={kind:'step',text:s.text,blockId:s.id,monthlyId:w.monthlyId}; row.classList.add('dragging'); });
+      row.addEventListener('dragstart',()=>{ dragged={kind:'step',text:s.text,blockId:s.id,monthlyId:host}; row.classList.add('dragging'); });
       row.addEventListener('dragend',()=>{ row.classList.remove('dragging'); dragged=null; });
     }
   });
   panel.querySelectorAll('.dstep-add').forEach(btn=>{
     btn.addEventListener('click',e=>{ e.stopPropagation();
       const row=btn.closest('.dstep-item'); const s=steps.find(x=>x.id===row.dataset.bid); if(!s) return;
-      addStepTodo({text:s.text,blockId:s.id,monthlyId:w.monthlyId}); });
+      addStepTodo({text:s.text,blockId:s.id,monthlyId:host}); });
   });
 }
 function refreshDayStepPanels(){
@@ -1319,11 +1322,11 @@ function weekCol(el, wk){
     + (done.length ? `<div class="wdone-h">✓ 已完成 · ${done.length} 项</div>`+done.map(weekRow).join('') : '');
   bindWeekChecks(el);
   const wToggle=(wid)=>{
-    const w=DATA.weekly.find(x=>x.id===wid); if(!w||!w.monthlyId) return;
+    const w=DATA.weekly.find(x=>x.id===wid); if(!w) return;
     const panel=document.getElementById('wsteps_'+wid); if(!panel) return;
     const t=document.querySelector('#'+el+' .wstep-toggle[data-wid="'+wid+'"]');
     if(!panel.hidden){ panel.hidden=true; if(t) t.classList.remove('open'); return; }
-    panel.hidden=false; if(t) t.classList.add('open'); mountSteps(panel, w.monthlyId, null);
+    panel.hidden=false; if(t) t.classList.add('open'); mountSteps(panel, stepHost(w), null);
   };
   document.querySelectorAll('#'+el+' .wstep-toggle').forEach(t=>t.addEventListener('click',e=>{ e.stopPropagation(); wToggle(t.dataset.wid); }));
   // 点任务整行 = 展开/收起步骤(避开完成复选框)
@@ -1377,6 +1380,7 @@ function renderDaily(){
         msg='关联步骤已失效(每日勾选已保存)';
       }else{
         applyStepState(sr.monthlyId, sr.blockId, val, r.percent, r.total);
+        syncWeeklyFromSteps(sr.monthlyId, r.total, r.done);
         msg=val?'已完成,步骤已同步 ✓':'已取消,步骤已同步';
       }
     }catch(err){
@@ -1505,6 +1509,19 @@ const ganttOpenSet=new Set();          // 展开步骤的任务条(weekly id)集
 const STEP_CACHE={};                   // monthlyId → steps数组 | 'error'
 const STEP_INFLIGHT={};                // 拉取去重
 const taskColor=w=>!w.monthlyId?'#8b6cc7':(w.type==='工作'?'#e8833a':'#3b82d6'); // 独立周任务紫色,月任务按类型橙/蓝
+// 步骤宿主页:月任务的步骤存关联月度页,独立周任务的步骤存周任务页自身(块接口通用)
+const stepHost=w=>w.monthlyId||w.id;
+// 周任务步骤全部完成 → 自动标记完成(归档到周卡片已完成分区);有未完成又自动打开。仅对独立周任务生效
+function syncWeeklyFromSteps(hostId, total, done){
+  const w=DATA.weekly.find(x=>x.id===hostId); if(!w||!total) return;   // hostId 是月度页时找不到,自然跳过
+  const should = done===total;
+  if(w.done!==should){
+    w.done=should;
+    pushUpdate(w.id,'完成情况','checkbox',should);
+    refreshWeekCards(); renderDayPage();
+    toast(should?`「${w.t}」所有步骤完成,已归档到已完成 ✓`:`「${w.t}」有步骤重新打开,任务移回未完成`);
+  }
+}
 const fmtMD=d=>{ const p=(d||'').split('-'); return (+p[1])+'/'+(+p[2]); };
 // 月/周两个甘特都重渲(步骤状态两处共享)
 function rerenderGantts(){ renderGantt('gantt','month'); if(document.getElementById('weekGantt')) renderGantt('weekGantt','week'); }
@@ -1517,17 +1534,18 @@ async function loadSteps(mid){
   rerenderGantts();
 }
 function toggleGanttSteps(w){
-  if(!w.monthlyId){ toast('独立周任务没有步骤清单'); return; }
+  const host=stepHost(w);
   if(ganttOpenSet.has(w.id)){ ganttOpenSet.delete(w.id); }
-  else{ ganttOpenSet.add(w.id); if(Array.isArray(STEP_CACHE[w.monthlyId])) loadSteps(w.monthlyId); } // 有旧缓存先渲染,后台刷新
+  else{ ganttOpenSet.add(w.id); if(Array.isArray(STEP_CACHE[host])) loadSteps(host); } // 有旧缓存先渲染,后台刷新
   rerenderGantts();
 }
 function subRowsHtml(w,b){
   const msgRow=m=>`<div class="mg-row mg-sub"><div class="mg-label mg-sublabel"></div><div class="mg-track mg-subtrack"><span class="mg-submsg">${m}</span></div></div>`;
+  const host=stepHost(w);
   const addRow=`<div class="mg-row mg-sub mg-addrow"><div class="mg-label mg-sublabel"><input class="mg-addinp" data-wadd="${w.id}" placeholder="＋ 步骤,回车添加"></div><div class="mg-track mg-subtrack"></div></div>`;
-  const st=STEP_CACHE[w.monthlyId];
-  if(st==='error') return msgRow(`加载失败 · <span class="mg-retry" data-retrymid="${w.monthlyId}">点此重试</span>`);
-  if(!Array.isArray(st)){ loadSteps(w.monthlyId); return msgRow('加载步骤中…'); }
+  const st=STEP_CACHE[host];
+  if(st==='error') return msgRow(`加载失败 · <span class="mg-retry" data-retrymid="${host}">点此重试</span>`);
+  if(!Array.isArray(st)){ loadSteps(host); return msgRow('加载步骤中…'); }
   if(!st.length) return addRow;
   const pS=indexOfDate(b,w.s), pE=indexOfDate(b,w.e), col=taskColor(w);
   return st.map(s=>{
@@ -1572,11 +1590,11 @@ function renderGantt(containerId, mode){
     const si=indexOfDate(b,w.s), ei=indexOfDate(b,w.e);
     const left=si/b.days*100, width=Math.max((ei-si+1)/b.days*100, 100/b.days);
     const col=taskColor(w);
-    const open=ganttOpenSet.has(w.id) && w.monthlyId;
-    const caret=w.monthlyId?`<span class="mg-caret${open?' open':''}">▸</span>`:'<span class="mg-caret" style="visibility:hidden">▸</span>';
+    const open=ganttOpenSet.has(w.id);
+    const caret=`<span class="mg-caret${open?' open':''}">▸</span>`;
     const tip=`${w.s}→${w.e}${clip?'(延伸出本窗口)':''} · 拖动改期`;
     const rmTip=w.monthlyId?'退回规划池(取消这条排期)':'删除该周任务';
-    let row=`<div class="mg-row${open?' mg-rowopen':''}" data-rowwid="${w.id}"><div class="mg-label${w.monthlyId?' haskids':''}" data-wlabel="${w.id}" draggable="true" title="${esc(w.t)}${w.monthlyId?' · 点击展开步骤':''} · 上下拖动调整顺序">${caret}<span class="lt">${esc(w.t)}</span><span class="lux" data-lux="${w.id}" title="${rmTip}">×</span></div>
+    let row=`<div class="mg-row${open?' mg-rowopen':''}" data-rowwid="${w.id}"><div class="mg-label haskids" data-wlabel="${w.id}" draggable="true" title="${esc(w.t)} · 点击展开步骤 · 上下拖动调整顺序">${caret}<span class="lt">${esc(w.t)}</span><span class="lux" data-lux="${w.id}" title="${rmTip}">×</span></div>
       <div class="mg-track"><div class="mg-bar${clip?' clip':''}${open?' mg-openbar':''}" data-wid="${w.id}" style="left:${left}%;width:${width}%;background:${col}"
         title="${esc(w.t)} · ${tip}">${'<span class="mg-h l"></span>'}<span class="mg-txt">${w.monthlyId?'':'周·'}${w.pr||''}</span>${'<span class="mg-h r"></span>'}<span class="wux" title="${rmTip}">↩</span></div></div></div>`;
     if(open) row+=subRowsHtml(w,b);
@@ -1705,16 +1723,18 @@ function bindSubRows(el, b){
     inp.addEventListener('pointerdown',e=>e.stopPropagation());
     inp.addEventListener('keydown',async e=>{
       if(e.key!=='Enter') return;
-      const w=DATA.weekly.find(x=>x.id===inp.dataset.wadd); if(!w||!w.monthlyId) return;
+      const w=DATA.weekly.find(x=>x.id===inp.dataset.wadd); if(!w) return;
+      const host=stepHost(w);
       const text=inp.value.trim(); if(!text) return;
       inp.disabled=true;
-      try{ const r=await apiPost('/api/step-add',{pageId:w.monthlyId,text});
-        const arr=STEP_CACHE[w.monthlyId];
+      try{ const r=await apiPost('/api/step-add',{pageId:host,text});
+        const arr=STEP_CACHE[host];
         if(Array.isArray(arr)) arr.push({id:r.step.id,text,checked:false,s:null,e:null});
-        else STEP_CACHE[w.monthlyId]=[{id:r.step.id,text,checked:false,s:null,e:null}];
-        const m=DATA.monthly.find(x=>x.id===w.monthlyId);
+        else STEP_CACHE[host]=[{id:r.step.id,text,checked:false,s:null,e:null}];
+        const m=DATA.monthly.find(x=>x.id===host);
         if(m){ m.p=r.percent; m.stepTotal=r.total; renderMonthly(); }
-        rerenderGantts(); updateTaskProgressUI(w.monthlyId); toast('步骤已添加,幽灵条点击/拖动即可排期');
+        rerenderGantts(); updateTaskProgressUI(host);
+        syncWeeklyFromSteps(host, r.total, r.done); toast('步骤已添加,幽灵条点击/拖动即可排期');
         const ni=el.querySelector(`.mg-addinp[data-wadd="${w.id}"]`); if(ni) ni.focus(); }
       catch(err){ console.error(err); inp.disabled=false; toast('添加失败,请重试'); }
     });
@@ -1722,8 +1742,9 @@ function bindSubRows(el, b){
   const axis=el.querySelector('.mg-axis');
   const geom=()=>{ const r=axis.getBoundingClientRect(); return {left:r.left, dayW:r.width/b.days}; };
   el.querySelectorAll('.mg-row.mg-sub[data-wsub]').forEach(row=>{
-    const w=DATA.weekly.find(x=>x.id===row.dataset.wsub); if(!w||!w.monthlyId) return;
-    const steps=STEP_CACHE[w.monthlyId]; if(!Array.isArray(steps)) return;
+    const w=DATA.weekly.find(x=>x.id===row.dataset.wsub); if(!w) return;
+    const host=stepHost(w);
+    const steps=STEP_CACHE[host]; if(!Array.isArray(steps)) return;
     const pS=indexOfDate(b,w.s), pE=indexOfDate(b,w.e);
     // ✎ 改名:文本原地变输入框(悬停显示)
     const sed=row.querySelector('.mg-sublabel .sedit');
@@ -1731,7 +1752,7 @@ function bindSubRows(el, b){
       sed.addEventListener('click',e=>{ e.stopPropagation();
         const s=steps.find(x=>x.id===sed.dataset.bid); if(!s) return;
         const span=row.querySelector('.mg-sublabel .st');
-        inlineEditText(span, s.text, text=>renameStepCommit(w.monthlyId, s.id, text)); });
+        inlineEditText(span, s.text, text=>renameStepCommit(host, s.id, text)); });
     }
     // × 删除步骤(悬停显示)
     const del=row.querySelector('.mg-sublabel .sdel');
@@ -1739,26 +1760,28 @@ function bindSubRows(el, b){
       del.addEventListener('click',async e=>{ e.stopPropagation();
         const s=steps.find(x=>x.id===del.dataset.bid); if(!s) return;
         if(!confirm('删除步骤「'+s.text+'」?')) return;
-        try{ const r=await apiPost('/api/step-delete',{pageId:w.monthlyId,blockId:s.id});
+        try{ const r=await apiPost('/api/step-delete',{pageId:host,blockId:s.id});
           const k=steps.indexOf(s); if(k>=0) steps.splice(k,1);
-          const m=DATA.monthly.find(x=>x.id===w.monthlyId);
+          const m=DATA.monthly.find(x=>x.id===host);
           if(m){ m.p=r.percent; m.stepTotal=r.total; renderMonthly(); }
-          rerenderGantts(); updateTaskProgressUI(w.monthlyId); toast('步骤已删除'); }
+          rerenderGantts(); updateTaskProgressUI(host);
+          syncWeeklyFromSteps(host, r.total, r.done); toast('步骤已删除'); }
         catch(err){ console.error(err); await reload().catch(()=>{}); toast('网络波动,已同步'); }
       });
     }
-    // 勾选步骤 → step-toggle → 同步月度完成度 + 今日待办
+    // 勾选步骤 → step-toggle → 同步完成度/今日待办/周任务自动归档
     const cb=row.querySelector('.mg-sublabel .scb');
     if(cb){
       cb.addEventListener('pointerdown',e=>e.stopPropagation());
       cb.addEventListener('change',async ()=>{
         const s=steps.find(x=>x.id===cb.dataset.bid); if(!s) return;
         const old=s.checked; s.checked=cb.checked; rerenderGantts();
-        try{ const r=await apiPost('/api/step-toggle',{pageId:w.monthlyId,blockId:s.id,checked:s.checked});
-          const m=DATA.monthly.find(x=>x.id===w.monthlyId);
+        try{ const r=await apiPost('/api/step-toggle',{pageId:host,blockId:s.id,checked:s.checked});
+          const m=DATA.monthly.find(x=>x.id===host);
           if(m){ m.p=r.percent; m.stepTotal=r.total; renderMonthly(); }
-          updateTaskProgressUI(w.monthlyId);
-          syncDailyFromStep(s.id, s.checked); }
+          updateTaskProgressUI(host);
+          syncDailyFromStep(s.id, s.checked);
+          syncWeeklyFromSteps(host, r.total, r.done); }
         catch(err){ console.error(err); s.checked=old; rerenderGantts(); toast('网络波动,请重试'); }
       });
     }
@@ -1771,7 +1794,7 @@ function bindSubRows(el, b){
     if(sx){ sx.addEventListener('pointerdown',e=>e.stopPropagation());
       sx.addEventListener('click',async e=>{ e.stopPropagation();
         const oS=s.s,oE=s.e; s.s=null; s.e=null; rerenderGantts();
-        try{ await apiPost('/api/step-schedule',{pageId:w.monthlyId,blockId:s.id,start:null,end:null}); toast('已取消排期'); }
+        try{ await apiPost('/api/step-schedule',{pageId:host,blockId:s.id,start:null,end:null}); toast('已取消排期'); }
         catch(err){ console.error(err); s.s=oS; s.e=oE; rerenderGantts(); toast('网络波动,请重试'); } });
     }
     // 已排期条=真实日期差量(部分越窗也安全);幽灵条=窗口内落定(排到当前视图内,合理)
@@ -1807,7 +1830,7 @@ function bindSubRows(el, b){
       if(!isGhost && ns===s.s && ne===s.e) return;            // 已排期条没变化=不提交
       if(isGhost && wasMode!=='move' && !moved) return;       // 幽灵条手柄点了没动=不提交(点条身=整段落定)
       const oS=s.s,oE=s.e; s.s=ns; s.e=ne; rerenderGantts();
-      try{ await apiPost('/api/step-schedule',{pageId:w.monthlyId,blockId:s.id,start:ns,end:ne}); toast('步骤已排期 '+ns+'→'+ne+' ✓'); }
+      try{ await apiPost('/api/step-schedule',{pageId:host,blockId:s.id,start:ns,end:ne}); toast('步骤已排期 '+ns+'→'+ne+' ✓'); }
       catch(err){ console.error(err); s.s=oS; s.e=oE; rerenderGantts(); toast('网络波动,请重试'); } };
     bar.addEventListener('pointerdown',e=>{ if(e.button===0) down(e,'move'); });
     const hl=bar.querySelector('.mg-h.l'); if(hl) hl.addEventListener('pointerdown',e=>{ if(e.button===0) down(e,'l'); });
