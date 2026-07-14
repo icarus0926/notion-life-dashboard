@@ -324,6 +324,9 @@
   .src-tag{flex:none;font-size:10.5px;padding:0 6px;border-radius:8px;line-height:16px;margin-left:2px}
   .src-tag.m{color:#2e7d4f;background:#e2f3e8}
   .src-tag.w{color:#7a5ec2;background:#efe9fb}
+  .wdone-h{margin:16px 0 8px;padding-top:12px;border-top:1px dashed var(--border);
+    font-size:12.5px;font-weight:600;color:var(--text3)}
+  .wdone-h~.wentry .witem{opacity:.8}
   .dstep-addrow{cursor:default}
   .dstep-addrow:hover{background:transparent}
   .dstep-addinp{width:100%;max-width:280px;padding:3px 10px;border:1px dashed var(--border);border-radius:8px;
@@ -1304,11 +1307,16 @@ function bindWeekChecks(container){
     const rec=DATA.weekly.find(x=>x.id===id); if(rec) rec.done=val;
     document.querySelectorAll(`[data-id="${id}"] .cbox`).forEach(o=>{o.checked=val;o.closest('[data-id]').classList.toggle('checked',val);});
     pushUpdate(id,'完成情况','checkbox',val);
+    if(container==='w27') refreshWeekCards();   // 周卡片:勾选后挪入/挪出「已完成」分区
   }));
 }
 function weekCol(el, wk){
   const items=DATA.weekly.filter(w=>w.w===wk);
-  document.getElementById(el).innerHTML = items.length ? items.map(weekRow).join('') : '<div class="empty-hint">本周暂无任务</div>';
+  const pending=items.filter(w=>!w.done), done=items.filter(w=>w.done);
+  document.getElementById(el).innerHTML =
+    (pending.length ? pending.map(weekRow).join('')
+      : `<div class="empty-hint">${items.length?'本周任务都完成了 🎉':'本周暂无任务'}</div>`)
+    + (done.length ? `<div class="wdone-h">✓ 已完成 · ${done.length} 项</div>`+done.map(weekRow).join('') : '');
   bindWeekChecks(el);
   const wToggle=(wid)=>{
     const w=DATA.weekly.find(x=>x.id===wid); if(!w||!w.monthlyId) return;
