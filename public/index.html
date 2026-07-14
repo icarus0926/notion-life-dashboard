@@ -462,7 +462,8 @@
       <div class="phead"><h1><span id="dTitle">每日执行</span><span class="tnav"><button class="tbtn" data-nav="day:-1" title="前一天">‹</button><button class="tbtn td" data-nav="day:0" title="回到今天">今</button><button class="tbtn" data-nav="day:1" title="后一天">›</button></span></h1><div class="sub">从本周任务拆解当日待办</div></div>
       <div class="card day-hero"><div class="big" id="dayNum">--</div>
         <div class="meta" id="dayMeta"></div></div>
-      <h2><span class="bar" style="background:var(--green)"></span><span id="todoH2">今日待办 · 可增删打勾</span></h2>
+      <h2 style="display:flex;align-items:center"><span class="bar" style="background:var(--green)"></span><span id="todoH2">今日待办 · 可增删打勾</span>
+        <button class="rollbtn" id="dayRollBtn" title="把这一天没做完的待办顺延到第二天">未完成顺延明天 ↷</button></h2>
       <div class="todo-add">
         <input id="todoInput" type="text" placeholder="输入今日待办,回车或点添加…">
         <button id="todoAddBtn">添加</button>
@@ -1347,10 +1348,15 @@ function renderDaily(){
   const day=viewDayStr();
   const items=(DATA.daily||[]).filter(x=> x.date===day || (!x.date && isViewDayToday()));  // 无日期的浮动待办只在真实今天显示
   const pending=items.filter(x=>!x.done), doneItems=items.filter(x=>x.done);
-  const row=it=>
-    `<div class="todo-item ${it.done?'done':''}" data-id="${it.id}">
+  const srcName=it=>{ if(!it.stepRef) return '';
+    const m=DATA.monthly.find(x=>x.id===it.stepRef.monthlyId); if(m) return m.n;
+    const w=DATA.weekly.find(x=>x.id===it.stepRef.monthlyId); return w?w.t:''; };
+  const row=it=>{
+    const sn=srcName(it);
+    const tag=it.stepRef?`<span class="src-step" title="来自「${esc(sn||'任务')}」的步骤,勾选会同步步骤完成">步骤·${esc(sn?(sn.length>12?sn.slice(0,12)+'…':sn):'?')}</span>`:'';
+    return `<div class="todo-item ${it.done?'done':''}" data-id="${it.id}">
        <input type="checkbox" class="cbox" ${it.done?'checked':''}>
-       <span class="tt">${esc(it.t)}</span>${it.stepRef?'<span class="src-step" title="来自任务步骤,勾选会同步步骤完成">步骤</span>':''}<span class="del" data-deltodo="${it.id}" title="删除">×</span></div>`;
+       <span class="tt">${esc(it.t)}</span>${tag}<span class="del" data-deltodo="${it.id}" title="删除">×</span></div>`; };
   const el=document.getElementById('todoList');
   el.innerHTML = pending.length ? pending.map(row).join('')
     : `<div class="empty-hint">${items.length?'待办都完成了 🎉':'今天还没有待办,上面加一条试试。'}</div>`;
@@ -1405,6 +1411,26 @@ async function addTodo(){
     DATA.daily=DATA.daily||[]; DATA.daily.push(item); inp.value=''; renderDaily(); toast('已添加 ✓');
   }catch(e){ toast('添加失败'); console.error(e); }
 }
+// 顺延:把视图日未完成的待办改到第二天(改 日期 字段,联动的步骤关联保持)
+async function rolloverDaily(){
+  const btn=document.getElementById('dayRollBtn');
+  const day=viewDayStr(), to=addDays(day,1);
+  const items=(DATA.daily||[]).filter(x=>(x.date===day||(!x.date&&isViewDayToday()))&&!x.done);
+  if(!items.length){ toast('这一天没有需要顺延的待办'); return; }
+  if(!confirm(`将把 ${items.length} 条未完成待办顺延到 ${to}:\n\n${items.map(i=>'· '+i.t).join('\n')}\n\n确定顺延?`)) return;
+  btn.disabled=true;
+  let ok=0, fail=0;
+  for(const it of items){
+    btn.textContent=`顺延中 ${ok+fail+1}/${items.length}…`;
+    try{ await apiPost('/api/update',{pageId:it.id,property:'日期',propType:'date',value:to}); it.date=to; ok++; }
+    catch(e){ console.error(e); fail++; }
+  }
+  btn.disabled=false; btn.textContent='未完成顺延明天 ↷';
+  if(fail){ await reload().catch(()=>{}); toast(`顺延完成 ${ok} 条,${fail} 条失败(已对账,可再点一次)`); }
+  else toast(`已把 ${ok} 条待办顺延到 ${to} ✓`);
+  renderDaily(); refreshDayStepPanels();
+}
+document.getElementById('dayRollBtn').addEventListener('click',rolloverDaily);
 document.getElementById('todoAddBtn').addEventListener('click',addTodo);
 document.getElementById('todoInput').addEventListener('keydown',e=>{ if(e.key==='Enter') addTodo(); });
 // 步骤拖进今日待办区(输入行 + 列表都可作落点;只认 kind='step')

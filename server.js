@@ -137,6 +137,7 @@ app.post('/api/update', async (req, res) => {
     else if (propType === 'status') pv = { status: { name: value } };
     else if (propType === 'text')   pv = { rich_text: value ? [{ text: { content: String(value) } }] : [] };
     else if (propType === 'title')  pv = { title: [{ text: { content: String(value) } }] };
+    else if (propType === 'date')   pv = { date: value ? { start: String(value) } : null };
     else return res.status(400).json({ error: 'bad propType' });
     const r = await fetch(`https://api.notion.com/v1/pages/${pageId}`,
       { method: 'PATCH', headers: nheaders(), body: JSON.stringify({ properties: { [property]: pv } }) });
