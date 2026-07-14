@@ -1,0 +1,70 @@
+{
+  "$comment": "天罡日程管理系统所需的 Notion 数据库结构。6 个数据库、属性名(中文)与类型必须逐字一致;select 的 options 至少包含所列值(可增不可少);数据库里多出的其它属性不影响运行。relation 的 target 指向本文件中的另一库。建库后务必把每个库共享给你的 Notion 集成。",
+  "databases": {
+    "年度目标": {
+      "env_var": "DB_GOALS",
+      "properties": {
+        "目标":     { "type": "title" },
+        "领域":     { "type": "select", "options": ["投资理财", "专业知识", "政治经济知识", "健康", "社交", "副业", "主业"] },
+        "成功标准": { "type": "rich_text" },
+        "年份":     { "type": "select", "options": ["2026"] },
+        "当前进度": { "type": "number", "comment": "0-100" },
+        "状态":     { "type": "status", "options": ["未开始", "进行中", "完成"] }
+      }
+    },
+    "个人成长任务池": {
+      "env_var": "DB_GROWTH_POOL",
+      "properties": {
+        "任务":     { "type": "title" },
+        "优先级":   { "type": "select", "options": ["P0", "P1", "P2"] },
+        "状态":     { "type": "select", "options": ["待分配", "已分配", "已完成"] },
+        "分配月份": { "type": "rich_text", "comment": "app 写入 'YYYY-MM'" }
+      }
+    },
+    "主业任务池": {
+      "env_var": "DB_WORK_POOL",
+      "properties": {
+        "任务":     { "type": "title" },
+        "优先级":   { "type": "select", "options": ["P0", "P1", "P2"] },
+        "状态":     { "type": "select", "options": ["待分配", "已分配", "已完成"] },
+        "分配月份": { "type": "rich_text" }
+      }
+    },
+    "月度计划": {
+      "env_var": "DB_MONTHLY",
+      "properties": {
+        "事项":           { "type": "title" },
+        "月份":           { "type": "select", "options": ["2026-07"], "comment": "app 按 'YYYY-MM' 写入,新月份的选项会自动创建" },
+        "类型":           { "type": "select", "options": ["工作", "个人成长"] },
+        "优先级":         { "type": "select", "options": ["P0", "P1", "P2"] },
+        "完成度":         { "type": "number", "comment": "0-100,有步骤时由 app 按步骤勾选数自动重算" },
+        "关联任务池":     { "type": "relation", "target": "个人成长任务池" },
+        "关联主业任务池": { "type": "relation", "target": "主业任务池" }
+      },
+      "page_content_comment": "每条月度任务的页面正文中的 to_do 块 = 该任务的步骤;步骤排期以文本标记「 📅YYYY-MM-DD→YYYY-MM-DD」附加在待办文字尾部"
+    },
+    "周计划": {
+      "env_var": "DB_WEEKLY",
+      "properties": {
+        "任务":         { "type": "title" },
+        "完成情况":     { "type": "checkbox" },
+        "类型":         { "type": "select", "options": ["工作", "个人成长"] },
+        "优先级":       { "type": "select", "options": ["P0", "P1", "P2"] },
+        "开始日期":     { "type": "date" },
+        "结束日期":     { "type": "date" },
+        "周次":         { "type": "rich_text", "comment": "app 写入 ISO 周标签如 '26W29'" },
+        "排序":         { "type": "number", "comment": "甘特图行手动排序号" },
+        "关联月度事项": { "type": "relation", "target": "月度计划" }
+      }
+    },
+    "每日执行": {
+      "env_var": "DB_DAILY",
+      "properties": {
+        "待办":     { "type": "title" },
+        "日期":     { "type": "date" },
+        "完成":     { "type": "checkbox" },
+        "关联步骤": { "type": "rich_text", "comment": "app 写入 '月度页ID|步骤块ID',用于待办↔步骤完成联动" }
+      }
+    }
+  }
+}

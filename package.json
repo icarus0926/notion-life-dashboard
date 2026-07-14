@@ -1,0 +1,22 @@
+{
+  "name": "notion-life-dashboard",
+  "version": "1.0.0",
+  "description": "天罡日程管理系统 · 自托管的 Notion 双向同步 年/月/周/日 目标管理仪表盘",
+  "main": "server.js",
+  "license": "MIT",
+  "author": "icarus0926",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/icarus0926/notion-life-dashboard.git"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}

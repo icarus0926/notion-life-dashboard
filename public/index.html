@@ -1,0 +1,1810 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>天罡日程管理系统 · 2026</title>
+<style>
+  :root{
+    --bg:#f6f5f3; --card:#ffffff; --border:#ececec; --text:#1f1f1f;
+    --text2:#77716b; --text3:#a8a29b;
+    --blue:#3b82d6; --orange:#e8833a; --green:#3da56b; --red:#d6534f;
+    --purple:#8b62c9; --pink:#d4699e; --brown:#a07850; --gray:#9ca3af;
+    --shadow:0 1px 3px rgba(0,0,0,.04),0 4px 14px rgba(0,0,0,.04);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.55;}
+  .app{display:flex;min-height:100vh}
+  .side{width:210px;flex:none;background:var(--card);border-right:1px solid var(--border);
+    padding:24px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:6px;}
+  .brand{font-size:16px;font-weight:700;padding:4px 12px 16px;letter-spacing:.5px}
+  .brand .yr{color:var(--text3);font-weight:500;font-size:13px;display:block;margin-top:2px}
+  .nav{display:flex;align-items:center;gap:11px;padding:10px 13px;border-radius:9px;
+    font-size:14.5px;color:var(--text2);cursor:pointer;transition:all .13s;user-select:none}
+  .nav:hover{background:#f2f1ef;color:var(--text)}
+  .nav.on{background:var(--text);color:#fff;font-weight:600}
+  .nav .ic{font-size:16px;width:20px;text-align:center}
+  .side .foot{margin-top:auto;font-size:11.5px;color:var(--text3);padding:0 12px;line-height:1.7}
+  .side .rbtn{margin:8px 12px 0;font-size:12px;padding:7px;border:1px solid var(--border);border-radius:8px;
+    text-align:center;cursor:pointer;color:var(--text2)}
+  .side .rbtn:hover{background:#f2f1ef}
+  .main{flex:1;min-width:0;padding:34px 34px 60px;max-width:1180px}
+  .page{display:none;animation:fade .22s ease}.page.on{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .phead{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:22px}
+  .phead h1{font-size:23px;font-weight:700;letter-spacing:.5px;display:flex;align-items:center}
+  .phead .sub{font-size:13px;color:var(--text3)}
+  /* 时间导航 ‹ 今 › */
+  .tnav{display:inline-flex;align-items:center;gap:6px;margin-left:16px}
+  .tbtn{width:27px;height:27px;border-radius:50%;border:1px solid var(--border);background:#fff;cursor:pointer;
+    font-size:15px;color:var(--text2);line-height:1;padding:0;transition:all .12s}
+  .tbtn:hover{background:#f1efec;color:var(--text)}
+  .tbtn.td{width:auto;padding:0 12px;border-radius:14px;font-size:12.5px}
+  .rollbtn{margin-left:auto;padding:4px 12px;border:1px solid var(--border);border-radius:14px;background:#fff;
+    font-size:12px;color:var(--text2);cursor:pointer;font-weight:500;transition:all .12s}
+  .rollbtn:hover{background:#fdf3e7;border-color:#e8b27a;color:#b3742f}
+  .rollbtn:disabled{opacity:.5;cursor:default}
+  h2{font-size:16px;font-weight:650;margin:28px 0 13px;display:flex;align-items:center;gap:8px}
+  h2:first-of-type{margin-top:6px}
+  h2 .bar{width:4px;height:15px;border-radius:2px;background:var(--blue)}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+  .kpi{padding:18px 20px}.kpi .num{font-size:29px;font-weight:700}.kpi .lab{font-size:13px;color:var(--text2);margin-top:2px}
+  .kpi .sub{font-size:12px;color:var(--text3);margin-top:6px}
+  .goals{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+  .goal{padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+  .goal .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .goal .name{font-weight:600;font-size:14.5px}
+  .tag{font-size:11.5px;padding:1px 9px;border-radius:20px;flex:none}
+  .tag.todo{background:#f1f0ee;color:#8a847d}.tag.doing{background:#e3edf9;color:#2f6bb3}.tag.done{background:#e2f3e8;color:#2e7d4f}
+  .goal .crit{font-size:12.5px;color:var(--text2)}
+  .pbar{height:6px;border-radius:3px;background:#f0efed;overflow:hidden}
+  .pbar i{display:block;height:100%;border-radius:3px}
+  .goal .pctline{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text3)}
+  .pin{width:52px;padding:2px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:right}
+  .tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .tab{font-size:13.5px;padding:7px 16px;border-radius:20px;border:1px solid var(--border);
+    background:var(--card);color:var(--text2);cursor:pointer;transition:all .15s}
+  .tab:hover{border-color:#d8d4cf}.tab.on{background:var(--text);color:#fff;border-color:var(--text);font-weight:600}
+  .books{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+  .book{padding:15px 17px}.book .bt{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .book .bn{font-weight:600;font-size:13.5px;flex:1}.book .list{font-size:12px;color:var(--text2);line-height:1.8}
+  #gantt{width:100%;height:430px}.donut{width:100%;height:200px}
+  .mlist{padding:6px 18px}
+  .mrow{border-top:1px solid #f4f3f1}.mrow:first-child{border-top:none}
+  .mitem{display:flex;align-items:center;gap:10px;padding:12px 0;cursor:pointer}
+  .mitem .name{flex:1;font-size:14px;min-width:0}
+  .type{font-size:11.5px;padding:1px 9px;border-radius:10px;flex:none}
+  .type.work{background:#fdf1e3;color:#b2701f}.type.growth{background:#e3edf9;color:#2f6bb3}
+  .mitem .prog{width:120px;flex:none;display:flex;align-items:center;gap:8px}
+  .mitem .prog .pbar{flex:1}.mitem .prog input{width:46px}
+  .pin[readonly]{background:#f4f3f1;color:var(--text3);cursor:not-allowed}
+  /* 月任务步骤清单 */
+  .mstep-toggle{flex:none;width:18px;text-align:center;color:var(--text3);cursor:pointer;font-size:12px;
+    transition:transform .12s;user-select:none}
+  .mstep-toggle.open{transform:rotate(90deg);color:var(--text2)}
+  .mstep-toggle:hover{color:var(--text)}
+  .msteps{margin:2px 0 12px 30px;padding:12px 14px;background:#fff;border:1px solid var(--border);
+    border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.07)}
+  .msteps[hidden]{display:none}
+  .mtag-cnt{flex:none;font-size:11px;color:#2e7d4f;background:#e2f3e8;padding:0 8px;border-radius:10px;line-height:18px}
+  .step-cnt{display:block;font-size:12px;color:var(--text3);margin-bottom:8px}
+  .step-loading{font-size:12.5px;color:var(--text3);padding:6px 0}
+  .step-item{display:flex;align-items:center;gap:9px;padding:6px 0;font-size:13px;position:relative}
+  .step-item .scb{width:15px;height:15px;flex:none;cursor:pointer}
+  .step-item .st-t{flex:1;min-width:0;word-break:break-word}
+  .step-item.done .st-t{color:var(--text3);text-decoration:line-through}
+  .step-item .del{position:static;opacity:0;flex:none}
+  .step-item:hover .del{opacity:1}
+  .step-add{display:flex;gap:8px;margin-top:8px}
+  .step-add .step-input{flex:1;padding:7px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px}
+  .step-add .step-addbtn{padding:7px 14px;border:none;border-radius:8px;background:var(--text);color:#fff;font-size:12.5px;cursor:pointer}
+  .pool{padding:18px;margin-bottom:14px}
+  .poolhead{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+  .pool h3{font-size:15px;font-weight:650}
+  .pool .cnt{font-size:12.5px;color:var(--text3)}
+  .badge{font-size:11px;padding:0 7px;border-radius:10px;flex:none;font-weight:600}
+  .P0{background:#fbe9e7;color:#c04531}.P1{background:#fdf1e3;color:#b2701f}.P2{background:#f1f0ee;color:#8a847d}
+  /* 任务池:按优先级横向分层 */
+  .poollayers{display:flex;flex-direction:column;gap:12px}
+  .pool-layer{display:flex;align-items:flex-start;gap:10px}
+  .pl-lab{flex:none;width:30px;font-size:12px;font-weight:600;color:var(--text3);padding-top:7px}
+  .pl-cards{flex:1;display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+  .pcard{display:inline-flex;align-items:center;gap:5px;padding:6px 8px 6px 10px;border:1px solid var(--border);border-radius:20px;
+    background:#fff;cursor:grab;font-size:12.5px;max-width:360px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+  .pcard:active{cursor:grabbing}.pcard.dragging{opacity:.4}
+  .pcard.done{background:#f6f5f3;cursor:default}
+  .pcard .pc-t{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pcard.done .pc-t{color:var(--text3)}
+  .pcard .up,.pcard .del,.pcard .restore,.pcard .edit{position:static;top:auto;right:auto;flex:none;width:20px;height:20px;line-height:18px;
+    text-align:center;border-radius:50%;cursor:pointer;font-size:14px;color:var(--text3);opacity:.5;transition:all .12s}
+  .pcard .up{margin-left:3px;font-weight:700}
+  .pcard .up:hover{background:#e3edf9;color:#2f6bb3}
+  .pcard .edit{font-size:12px;margin-left:3px}
+  .pcard .edit:hover{background:#f4ecd9;color:#9a6b1f}
+  .pcard:hover .up,.pcard:hover .del,.pcard:hover .restore,.pcard:hover .edit{opacity:1}
+  .mcard .medit{flex:none;width:18px;text-align:center;color:var(--text3);cursor:pointer;font-size:12px;opacity:.45;transition:all .12s;border-radius:50%}
+  .mcard:hover .medit{opacity:1}
+  .mcard .medit:hover{background:#f4ecd9;color:#9a6b1f}
+  .em-inp{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-size:13.5px;background:#fff}
+  .em-inp:focus{outline:none;border-color:#9cc0e6}
+  .pcard .ok:hover{background:#e2f3e8;color:#2e7d4f}
+  .pcard .del:hover{background:#fbe9e7;color:#c04531}
+  .pcard .restore:hover{background:#e3edf9;color:#2f6bb3}
+  .done-pools{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:820px){.done-pools{grid-template-columns:1fr}}
+  .done-pools .pool{margin-bottom:0}
+  .donebox{display:flex;flex-wrap:wrap;gap:8px}
+  .mok{flex:none;width:22px;height:22px;line-height:20px;text-align:center;border-radius:6px;cursor:pointer;color:var(--text3);opacity:.5;font-size:14px;transition:all .12s}
+  .mitem:hover .mok{opacity:1}.mok:hover{background:#e2f3e8;color:#2e7d4f}
+  /* 月度计划规划池:优先级分层横排 chip(复用 .pcard 外形) */
+  .mcard{position:relative;max-width:460px}
+  .mcard:hover .mok{opacity:1}
+  .mcard .mok{width:20px;height:20px;line-height:18px;font-size:13px}
+  .mcard .mstep-toggle{width:16px;font-size:11px}
+  .mcard.open .mstep-toggle{transform:rotate(90deg);color:var(--text2)}
+  .mcard.open{border-color:#9cc0e6;box-shadow:0 2px 8px rgba(59,130,214,.15)}
+  .mcard .mpin{width:34px;padding:1px 3px;border:1px solid var(--border);border-radius:6px;font-size:11px;text-align:right;color:var(--text2)}
+  .mcard .mpin[readonly]{background:#f4f3f1;color:var(--text3);cursor:default}
+  .mcard .mpct{font-size:10.5px;color:var(--text3);margin:0 1px 0 -2px}
+  .mcard .msteps{position:absolute;top:calc(100% + 5px);left:0;z-index:30;margin:0;min-width:300px;max-width:min(460px,86vw);white-space:normal;cursor:default}
+  /* 安排确认弹框 */
+  .modal-ov{position:fixed;inset:0;background:rgba(30,28,25,.38);display:flex;align-items:center;justify-content:center;z-index:80;padding:20px}
+  .modal-ov[hidden]{display:none}
+  .modal{background:var(--card);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.18);width:440px;max-width:100%;padding:22px 22px 18px}
+  .modal h3{font-size:16px;font-weight:650;margin:0 0 12px}
+  .modal-task{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#fbfaf8;border:1px solid var(--border);border-radius:10px;margin-bottom:14px}
+  .modal-task .am-name{font-size:14px;font-weight:600}
+  .modal-lab{font-size:12.5px;color:var(--text2);margin-bottom:8px}
+  .modal #amSteps{max-height:280px;overflow-y:auto}
+  .modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+  .modal-foot button{padding:9px 18px;border:none;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer}
+  .modal-foot .save{background:var(--text);color:#fff}
+  .modal-foot .cancel{background:#eee;color:var(--text2)}
+  .dropzone{margin:6px 0 4px;padding:16px;border:2px dashed #d8d2ca;border-radius:12px;text-align:center;
+    color:var(--text3);font-size:13px;transition:all .12s;background:#fbfaf8}
+  .dropzone.over{border-color:var(--green);background:#eef7f0;color:#2e7d4f}
+  /* 增删 UI */
+  .addbtn{display:inline-flex;align-items:center;gap:5px;font-size:13px;padding:7px 14px;border-radius:9px;
+    border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;transition:all .13s}
+  .addbtn:hover{border-color:#c9c3bb;color:var(--text);background:#faf9f7}
+  .addform{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 4px;padding:14px;
+    background:#fbfaf8;border:1px solid var(--border);border-radius:11px}
+  .addform input[type=text]{flex:1;min-width:160px;padding:8px 11px;border:1px solid var(--border);border-radius:8px;font-size:13.5px}
+  .addform select{padding:8px 9px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;color:var(--text2)}
+  .addform button{padding:8px 15px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+  .addform .save{background:var(--text);color:#fff}
+  .addform .cancel{background:#eee;color:var(--text2)}
+  .goal{position:relative}
+  .del{position:absolute;top:10px;right:11px;width:20px;height:20px;line-height:18px;text-align:center;border-radius:6px;
+    color:var(--text3);cursor:pointer;font-size:15px;opacity:0;transition:all .12s}
+  .goal:hover .del,.kcard:hover .del,.todo-item:hover .del{opacity:1}
+  .del:hover{background:#fbe9e7;color:#c04531}
+  .kcard{position:relative}
+  .kcard .del{position:static;opacity:0;width:16px;height:16px;line-height:15px;font-size:13px;flex:none;margin-left:auto}
+  .mitem[draggable=true]{cursor:grab}.mitem[draggable=true]:active{cursor:grabbing}
+  .mitem.dragging{opacity:.35}
+  /* 今日待办 */
+  .todo-add{display:flex;gap:8px;margin:2px 0 14px}
+  .todo-add input{flex:1;padding:10px 13px;border:1px solid var(--border);border-radius:9px;font-size:14px}
+  .todo-add button{padding:10px 18px;border:none;border-radius:9px;background:var(--text);color:#fff;font-size:14px;font-weight:600;cursor:pointer}
+  .todo-item{display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px solid var(--border);
+    border-radius:10px;background:var(--card);margin-bottom:8px;box-shadow:var(--shadow);position:relative}
+  .todo-item.done .tt{color:var(--text3);text-decoration:line-through}.todo-item .tt{flex:1;font-size:14px}
+  .todo-item .del{position:static;opacity:0;margin-left:4px}
+  .empty-hint{color:var(--text3);font-size:13px;padding:14px 4px}
+  .wcols{display:grid;grid-template-columns:1fr;gap:14px;margin-top:6px}
+  .wcol{padding:16px 18px}.wcol h3{font-size:14.5px;font-weight:650;margin-bottom:10px;display:flex;justify-content:space-between}
+  .wcol h3 .rng{font-size:11.5px;color:var(--text3);font-weight:500}
+  .wentry{border-top:1px solid #f4f3f1}.wentry:first-child{border-top:none}
+  .witem{display:flex;align-items:center;gap:8px;padding:9px 0;font-size:13.5px}
+  .witem .t{flex:1;min-width:0}
+  .witem.checked .t{color:var(--text3);text-decoration:line-through}
+  .cbox{width:16px;height:16px;flex:none;cursor:pointer}
+  .wstep-toggle{flex:none;width:14px;text-align:center;color:var(--text3);cursor:pointer;font-size:11px;transition:transform .12s;user-select:none}
+  .wstep-toggle.open{transform:rotate(90deg);color:var(--text2)}
+  .wstep-none{width:14px;flex:none}
+  .wsteps{padding:2px 0 10px 26px}
+  /* 本月计划 chips */
+  .month-chips{display:flex;flex-wrap:wrap;gap:9px}
+  .month-chip{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid var(--border);border-radius:20px;
+    background:#fbfaf8;cursor:grab;font-size:12.5px;max-width:340px}
+  .month-chip:active{cursor:grabbing}.month-chip.dragging{opacity:.4}
+  .month-chip .mc-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .month-chip .mc-cnt{font-size:11px;color:#2e7d4f;background:#e2f3e8;padding:0 7px;border-radius:10px;flex:none}
+  /* 月度甘特(自建) */
+  .mgantt{width:100%;font-size:12px}
+  .mg-row{display:grid;grid-template-columns:170px 1fr;align-items:center;min-height:30px}
+  @media(max-width:720px){.mg-row{grid-template-columns:100px 1fr}}
+  .mg-label{display:flex;align-items:center;padding-right:10px;font-size:12.5px;color:var(--text2);overflow:hidden;white-space:nowrap}
+  .mg-label .lt{min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .mg-label .lux{flex:none;margin-left:4px;width:16px;height:16px;line-height:14px;text-align:center;border-radius:50%;
+    color:var(--text3);font-size:11px;cursor:pointer;opacity:0;transition:opacity .12s}
+  .mg-row[data-rowwid]:hover .mg-label .lux{opacity:.7}
+  .mg-label .lux:hover{background:#fbe9e7;color:#c04531;opacity:1}
+  .mg-track{position:relative;height:26px;border-left:1px solid #eceae7}
+  .mg-headrow{min-height:26px}.mg-axis{height:22px;border-bottom:1px solid #eceae7}
+  .mg-tick{position:absolute;top:2px;transform:translateX(-50%);color:var(--text3);font-size:11px;white-space:nowrap}
+  .mg-tick::before{content:'';position:absolute;left:50%;top:16px;height:6px;border-left:1px solid #e0ddd8}
+  .mg-today{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed #d6534f;z-index:1}
+  .mg-bar{position:absolute;top:3px;height:20px;border-radius:5px;opacity:.9;cursor:grab;display:flex;align-items:center;
+    box-shadow:0 1px 2px rgba(0,0,0,.08);min-width:8px;touch-action:none}
+  .mg-bar:active{cursor:grabbing}
+  .mg-bar .mg-txt{color:#fff;font-size:10.5px;font-weight:600;margin:0 auto;pointer-events:none}
+  .mg-h{position:absolute;top:0;bottom:0;width:8px;cursor:ew-resize}
+  .mg-h.l{left:-1px}.mg-h.r{right:-1px}
+  .mg-drop{display:flex;align-items:center;justify-content:center;border:1.5px dashed #d8d2ca;border-radius:8px;height:34px;margin:6px 0}
+  .mg-drop.mg-over,.mg-track.mg-over{background:#eef7f0;border-color:var(--green)}
+  .mg-drophint{color:var(--text3);font-size:12px}
+  .mg-droprow{min-height:40px}
+  /* 步骤子甘特(点任务条展开) */
+  .mg-caret{display:inline-block;width:13px;color:var(--text3);font-size:10px;transition:transform .12s;user-select:none}
+  .mg-caret.open{transform:rotate(90deg);color:var(--text2)}
+  .mg-label.haskids{cursor:pointer}
+  .mg-row[data-rowwid] .mg-label{cursor:grab}
+  .mg-row.rowdrag{opacity:.35}
+  .mg-row.rowover-b{box-shadow:inset 0 2.5px 0 var(--green)}
+  .mg-row.rowover-a{box-shadow:inset 0 -2.5px 0 var(--green)}
+  /* 展开的任务:名称完整换行显示 */
+  .mg-row.mg-rowopen .mg-label{white-space:normal}
+  .mg-row.mg-rowopen .mg-label .lt{white-space:normal;overflow:visible;text-overflow:clip;word-break:break-word;line-height:1.45;padding:3px 0}
+  .mg-bar{cursor:pointer}
+  .mg-bar.clip{cursor:pointer;opacity:.72;border-left:2px dotted rgba(255,255,255,.9);border-right:2px dotted rgba(255,255,255,.9)}
+  .mg-bar.mg-openbar{box-shadow:0 0 0 2px rgba(59,130,214,.35),0 1px 2px rgba(0,0,0,.08)}
+  .mg-sub{min-height:22px;background:#fbfaf8}
+  .mg-sub .mg-track{height:20px}
+  .mg-sublabel{display:flex;align-items:center;justify-content:flex-start;gap:6px;padding-left:26px;font-size:11px;color:var(--text3)}
+  .mg-sublabel .scb{width:12px;height:12px;flex:none;cursor:pointer;margin:0}
+  .mg-sublabel .st{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mg-sub.done .mg-sublabel .st{text-decoration:line-through}
+  .mg-sbar{position:absolute;top:3px;height:14px;border-radius:4px;cursor:grab;touch-action:none;min-width:6px;opacity:.68}
+  .mg-sbar:hover{opacity:.9}.mg-sbar:active{cursor:grabbing}
+  .mg-sbar.done{opacity:.55}
+  .mg-sbar.ghost{border:1.5px dashed;background:transparent;opacity:.5;cursor:pointer;top:2px;height:15px}
+  .mg-sbar.ghost:hover{opacity:.85;background:rgba(0,0,0,.03)}
+  .mg-sbar.ro{cursor:default;opacity:.35;border-radius:2px}
+  .mg-sbar .sx{position:absolute;right:-7px;top:-7px;width:15px;height:15px;line-height:13px;text-align:center;border-radius:50%;
+    background:#fff;border:1px solid var(--border);color:var(--text3);font-size:10px;cursor:pointer;opacity:0;transition:opacity .12s;z-index:2}
+  .mg-sbar:hover .sx{opacity:1}.mg-sbar .sx:hover{background:#fbe9e7;color:#c04531}
+  .mg-bar .wux{position:absolute;right:-9px;top:-9px;width:18px;height:18px;line-height:16px;text-align:center;border-radius:50%;
+    background:#fff;border:1px solid var(--border);color:var(--text3);font-size:11px;cursor:pointer;opacity:0;transition:opacity .12s;z-index:3}
+  .mg-bar:hover .wux{opacity:1}.mg-bar .wux:hover{background:#fdf3e7;color:#b3742f;border-color:#e8b27a}
+  .mg-sbar .mg-h{width:7px}
+  .mg-submsg{color:var(--text3);font-size:11.5px;padding-left:8px;line-height:20px}
+  .mg-retry{color:#2f6bb3;cursor:pointer;text-decoration:underline}
+  .mg-sublabel .sdel{flex:none;width:15px;height:15px;line-height:13px;text-align:center;border-radius:50%;
+    color:var(--text3);cursor:pointer;opacity:0;transition:opacity .12s;font-size:11px}
+  .mg-sub:hover .sdel{opacity:.65}
+  .mg-sublabel .sdel:hover{background:#fbe9e7;color:#c04531;opacity:1}
+  .mg-addinp{width:100%;max-width:150px;padding:2px 8px;border:1px dashed var(--border);border-radius:8px;
+    font-size:11px;background:transparent;color:var(--text2)}
+  .mg-addinp:focus{outline:none;border-color:#9cc0e6;background:#fff}
+  .st-date{flex:none;font-size:11px;color:var(--text3);background:#f4f3f1;padding:0 6px;border-radius:8px}
+  /* 每日执行:本周任务步骤面板 + 步骤→今日待办 */
+  .dstep-toggle{flex:none;width:18px;text-align:center;color:var(--text3);cursor:pointer;font-size:12px;transition:transform .12s;user-select:none}
+  .dstep-toggle.open{transform:rotate(90deg);color:var(--text2)}
+  .dsteps{margin:-3px 0 9px 42px;padding:7px 12px;background:#fbfaf8;border:1px dashed #e2ddd6;border-radius:10px}
+  .dstep-item{display:flex;align-items:center;gap:8px;padding:6px 6px;font-size:13px;border-radius:8px;cursor:pointer}
+  .dstep-item:hover{background:#f1efec}
+  .dstep-item.done{color:var(--text3)}
+  .dstep-item.done .dst{text-decoration:line-through}
+  .dstep-item.intoday{opacity:.8}
+  .dstep-item.dragging{opacity:.4}
+  .dstep-item .dst{flex:1;min-width:0;word-break:break-word}
+  .dstep-add{flex:none;font-size:11.5px;color:#2f6bb3;background:#e3edf9;padding:1px 9px;border-radius:9px;opacity:.6;transition:all .12s;cursor:pointer}
+  .dstep-item:hover .dstep-add{opacity:1}
+  .dstep-add:hover{background:#cfe1f6}
+  .dayitem{cursor:pointer}
+  .witem{cursor:pointer}
+  .dprog{flex:none;width:64px;height:6px;background:#eceae7;border-radius:3px;overflow:hidden}
+  .dprog i{display:block;height:100%;background:var(--green);border-radius:3px;transition:width .25s}
+  .dpct{flex:none;width:36px;font-size:11.5px;color:var(--text3);text-align:right}
+  .dscb{width:14px;height:14px;flex:none;cursor:pointer;margin:0}
+  .dstep-item .dsdel{flex:none;width:16px;height:16px;line-height:14px;text-align:center;border-radius:50%;
+    color:var(--text3);font-size:11px;cursor:pointer;opacity:0;transition:opacity .12s}
+  .dstep-item:hover .dsdel{opacity:.7}
+  .dstep-item .dsdel:hover{background:#fbe9e7;color:#c04531;opacity:1}
+  .dstep-item .dsedit{flex:none;width:16px;height:16px;line-height:14px;text-align:center;border-radius:50%;
+    color:var(--text3);font-size:10px;cursor:pointer;opacity:0;transition:opacity .12s}
+  .dstep-item:hover .dsedit{opacity:.7}
+  .dstep-item .dsedit:hover{background:#f4ecd9;color:#9a6b1f;opacity:1}
+  .mg-sublabel .sedit{flex:none;width:15px;height:15px;line-height:13px;text-align:center;border-radius:50%;
+    color:var(--text3);font-size:10px;cursor:pointer;opacity:0;transition:opacity .12s}
+  .mg-sub:hover .sedit{opacity:.65}
+  .mg-sublabel .sedit:hover{background:#f4ecd9;color:#9a6b1f;opacity:1}
+  .step-item .stedit{position:static;flex:none;width:18px;height:18px;line-height:16px;text-align:center;border-radius:50%;
+    color:var(--text3);font-size:11px;cursor:pointer;opacity:0;transition:opacity .12s}
+  .step-item:hover .stedit{opacity:.7}
+  .step-item .stedit:hover{background:#f4ecd9;color:#9a6b1f;opacity:1}
+  .inline-edit{flex:1;min-width:100px;font-size:inherit;font-family:inherit;color:var(--text);
+    padding:1px 7px;border:1px solid #9cc0e6;border-radius:6px;background:#fff}
+  .inline-edit:focus{outline:none;box-shadow:0 0 0 2px rgba(59,130,214,.15)}
+  .dstep-addrow{cursor:default}
+  .dstep-addrow:hover{background:transparent}
+  .dstep-addinp{width:100%;max-width:280px;padding:3px 10px;border:1px dashed var(--border);border-radius:8px;
+    font-size:12px;background:transparent;color:var(--text2)}
+  .dstep-addinp:focus{outline:none;border-color:#9cc0e6;background:#fff}
+  .dtag{flex:none;font-size:11px;color:var(--text3);background:#eceae7;padding:0 7px;border-radius:9px}
+  .src-step{flex:none;font-size:11px;color:#7a5ec2;background:#efe9fb;padding:0 7px;border-radius:9px;margin-left:6px}
+  .todo-drop-over{outline:2px dashed var(--green);outline-offset:2px;background:#eef7f0;border-radius:8px}
+  .day-hero{padding:22px 24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .day-hero .big{font-size:38px;font-weight:700;letter-spacing:1px}
+  .day-hero .meta{font-size:13px;color:var(--text2);line-height:1.8}
+  .day-note{margin-top:14px;padding:16px 18px;font-size:13px;color:var(--text2);line-height:1.9;
+    background:#fbfaf8;border:1px dashed #e2ddd6;border-radius:12px}
+  .daylist{margin-top:14px}
+  .dayitem{display:flex;align-items:center;gap:10px;padding:11px 16px;border:1px solid var(--border);
+    border-radius:10px;background:var(--card);margin-bottom:9px;box-shadow:var(--shadow)}
+  .dayitem.checked .t{color:var(--text3);text-decoration:line-through}.dayitem .t{flex:1;font-size:14px}
+  #toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;font-size:13px;
+    padding:9px 16px;border-radius:8px;opacity:0;transform:translateY(8px);transition:all .2s;pointer-events:none;z-index:50}
+  #toast.show{opacity:1;transform:none}
+  /* 登录门 */
+  #gate{position:fixed;inset:0;background:#f6f5f3;display:flex;align-items:center;justify-content:center;z-index:100}
+  #gate .box{background:#fff;border:1px solid var(--border);border-radius:14px;padding:34px 32px;width:320px;box-shadow:var(--shadow);text-align:center}
+  #gate h2{display:block;margin:0 0 6px;font-size:19px}
+  #gate p{font-size:12.5px;color:var(--text3);margin-bottom:18px}
+  #gate input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-size:14px;margin-bottom:12px}
+  #gate button{width:100%;padding:10px;border:none;border-radius:9px;background:var(--text);color:#fff;font-size:14px;font-weight:600;cursor:pointer}
+  #gate .err{color:var(--red);font-size:12.5px;height:16px;margin-top:8px}
+  #loading{position:fixed;inset:0;background:#f6f5f3;display:flex;align-items:center;justify-content:center;z-index:90;color:var(--text3);font-size:14px}
+  @media(max-width:720px){
+    .app{flex-direction:column}
+    .side{width:auto;height:auto;position:sticky;top:0;z-index:20;flex-direction:row;overflow-x:auto;padding:10px 12px;gap:4px;align-items:center}
+    .brand,.side .foot,.side .rbtn{display:none}
+    .nav{padding:8px 12px;white-space:nowrap;font-size:13.5px}.nav .ic{display:none}
+    .main{padding:22px 18px 50px}
+  }
+</style>
+</head>
+<body>
+
+<!-- 登录门 -->
+<div id="gate" style="display:none">
+  <div class="box">
+    <h2>⭐ 天罡日程管理系统</h2>
+    <p>请输入访问口令</p>
+    <input id="gatePw" type="password" placeholder="口令" autocomplete="current-password">
+    <button id="gateBtn">进入</button>
+    <div class="err" id="gateErr"></div>
+  </div>
+</div>
+<div id="loading">正在从 Notion 拉取数据…</div>
+
+<div class="app" id="app" style="display:none">
+  <aside class="side">
+    <div class="brand">⭐ 天罡日程<span class="yr">2026 · 实时联动</span></div>
+    <div class="nav on" data-page="overview"><span class="ic">🏠</span>总览</div>
+    <div class="nav" data-page="year"><span class="ic">📅</span>年度目标</div>
+    <div class="nav" data-page="month"><span class="ic">🗓️</span>月度 + 任务池</div>
+    <div class="nav" data-page="week"><span class="ic">📆</span>周计划</div>
+    <div class="nav" data-page="day"><span class="ic">☀️</span>每日执行</div>
+    <div class="rbtn" id="refreshBtn">↻ 重新拉取</div>
+    <div class="foot" id="snapFoot">与 Notion 实时联动<br>改动自动写回</div>
+  </aside>
+
+  <main class="main">
+    <section class="page on" id="page-overview">
+      <div class="phead"><h1>总览</h1><div class="sub" id="ovSub"></div></div>
+      <div class="kpis" id="kpis"></div>
+      <h2><span class="bar"></span>快速进入</h2>
+      <div class="kpis" style="margin-top:6px">
+        <div class="card kpi" style="cursor:pointer" data-goto="year"><div class="lab">📅 年度目标 →</div></div>
+        <div class="card kpi" style="cursor:pointer" data-goto="month"><div class="lab">🗓️ 月度 + 任务池 →</div></div>
+        <div class="card kpi" style="cursor:pointer" data-goto="week"><div class="lab">📆 周计划 →</div></div>
+        <div class="card kpi" style="cursor:pointer" data-goto="day"><div class="lab">☀️ 每日执行 →</div></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-year">
+      <div class="phead"><h1>年度目标</h1><div class="sub">进度可直接编辑 · 可增删,自动写回 Notion</div></div>
+      <div style="margin-bottom:12px"><span class="addbtn" id="addGoalBtn">＋ 添加年度目标</span></div>
+      <div id="goalForm"></div>
+      <div class="goals" id="goals"></div>
+      <h2><span class="bar" style="background:var(--pink)"></span>学习进度墙</h2>
+      <div class="tabs">
+        <button class="tab on" data-tab="invest">投资理财书单</button>
+        <button class="tab" data-tab="polit">政治经济书单</button>
+        <button class="tab" data-tab="course">专业课程</button>
+      </div>
+      <div class="books" id="books"></div>
+    </section>
+
+    <section class="page" id="page-month">
+      <div class="phead"><h1><span id="mTitle">2026 年 7 月</span><span class="tnav"><button class="tbtn" data-nav="month:-1" title="上一月">‹</button><button class="tbtn td" data-nav="month:0" title="回到当前">今</button><button class="tbtn" data-nav="month:1" title="下一月">›</button></span></h1><div class="sub">完成度 / 状态可编辑</div></div>
+      <h2><span class="bar" style="background:var(--orange)"></span>月度甘特图 · 拖条改时间 / 拖两端改时长</h2>
+      <div class="card" style="padding:14px 12px"><div id="gantt" class="mgantt"></div></div>
+      <h2 style="display:flex;align-items:center"><span class="bar" style="background:var(--green)"></span>月度计划规划池 · 拖到上方甘特图排期
+        <button class="rollbtn" id="rollBtn" title="把本月没排期或排期了没做完(完成度<100%)的任务顺延到下个月;其未完成的排期条作废删除,步骤保留">未完成顺延下月 ↷</button></h2>
+      <div class="card mlist" id="mlist"></div>
+      <div id="dropMonth" class="dropzone">⬇ 拖任务池卡片到此 = 排进月度计划规划池　｜　⬆ 拖规划池事项到此 = 退回任务池(取消分配)</div>
+      <h2><span class="bar" style="background:var(--purple)"></span>任务池 · 待分配(拖到上方月度计划规划池即排期)</h2>
+      <div class="card pool">
+        <div class="poolhead"><h3>个人成长任务池</h3><span class="cnt" id="growthCnt"></span>
+          <span class="addbtn" style="margin-left:auto;padding:5px 11px;font-size:12.5px" data-addpool="growth">＋ 添加任务</span></div>
+        <div id="growthForm"></div>
+        <div class="poollayers" id="growthPoolBox"></div>
+      </div>
+      <div class="card pool">
+        <div class="poolhead"><h3>主业任务池</h3><span class="cnt" id="workCnt"></span>
+          <span class="addbtn" style="margin-left:auto;padding:5px 11px;font-size:12.5px" data-addpool="work">＋ 添加任务</span></div>
+        <div id="workForm"></div>
+        <div class="poollayers" id="workPoolBox"></div>
+      </div>
+      <h2><span class="bar" style="background:var(--green)"></span>已完成任务池</h2>
+      <div class="done-pools">
+        <div class="card pool"><div class="poolhead"><h3>个人成长 · 已完成</h3><span class="cnt" id="growthDoneCnt"></span></div>
+          <div class="donebox" id="growthDoneBox"></div></div>
+        <div class="card pool"><div class="poolhead"><h3>主业 · 已完成</h3><span class="cnt" id="workDoneCnt"></span></div>
+          <div class="donebox" id="workDoneBox"></div></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-week">
+      <div class="phead"><h1><span id="wTitle">周计划</span><span class="tnav"><button class="tbtn" data-nav="week:-1" title="上一周">‹</button><button class="tbtn td" data-nav="week:0" title="回到当前">今</button><button class="tbtn" data-nav="week:1" title="下一周">›</button></span></h1><div class="sub" id="wSub">拖条改时间 · 勾选写回</div></div>
+      <h2><span class="bar" style="background:var(--orange)"></span>周计划甘特图 · 本周(拖条改时间 · 点条展开步骤)</h2>
+      <div class="card" style="padding:14px 12px"><div id="weekGantt" class="mgantt"></div></div>
+      <div class="wcols">
+        <div class="card wcol"><h3 id="w27h">本周</h3><div id="w27"></div></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-day">
+      <div class="phead"><h1><span id="dTitle">每日执行</span><span class="tnav"><button class="tbtn" data-nav="day:-1" title="前一天">‹</button><button class="tbtn td" data-nav="day:0" title="回到今天">今</button><button class="tbtn" data-nav="day:1" title="后一天">›</button></span></h1><div class="sub">从本周任务拆解当日待办</div></div>
+      <div class="card day-hero"><div class="big" id="dayNum">--</div>
+        <div class="meta" id="dayMeta"></div></div>
+      <h2><span class="bar" style="background:var(--green)"></span><span id="todoH2">今日待办 · 可增删打勾</span></h2>
+      <div class="todo-add">
+        <input id="todoInput" type="text" placeholder="输入今日待办,回车或点添加…">
+        <button id="todoAddBtn">添加</button>
+      </div>
+      <div id="todoList"></div>
+      <h2 id="doneH2" hidden><span class="bar" style="background:var(--text3)"></span><span id="doneH2t">今日已完成</span></h2>
+      <div id="doneList" hidden></div>
+      <div class="day-note">💡 上面是今日待办(存 Notion 每日执行库);下面列出本周任务作参考,勾选会写回周计划。</div>
+      <h2><span class="bar" style="background:var(--orange)"></span>本周任务(参考)</h2>
+      <div class="daylist" id="daylist"></div>
+    </section>
+  </main>
+</div>
+<div id="toast"></div>
+
+<!-- 安排确认弹框 -->
+<div id="assignModal" class="modal-ov" hidden>
+  <div class="modal">
+    <h3>确认安排到月度计划规划池</h3>
+    <div class="modal-task" id="amTask"></div>
+    <div class="modal-lab">步骤(可选 · 回车或点添加,也可留空)</div>
+    <div id="amSteps" class="msteps" style="padding:0"></div>
+    <div class="modal-foot">
+      <button class="cancel" id="amCancel">取消</button>
+      <button class="save" id="amOk">确认安排</button>
+    </div>
+  </div>
+</div>
+
+<!-- 编辑任务弹框(规划池/任务池) -->
+<div id="editModal" class="modal-ov" hidden>
+  <div class="modal">
+    <h3>编辑任务</h3>
+    <div class="modal-lab">名称</div>
+    <input type="text" id="emName" class="em-inp">
+    <div class="modal-lab" style="margin-top:12px">优先级</div>
+    <select id="emPr" class="em-inp"><option value="">(保持不变)</option><option>P0</option><option>P1</option><option>P2</option></select>
+    <div class="modal-foot">
+      <button class="cancel" id="emCancel">取消</button>
+      <button class="save" id="emOk">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ 静态文案(书单墙,非 Notion 数据) ============ */
+const DOMAIN_COLOR = {"投资理财":"#3da56b","专业知识":"#3b82d6","政治经济知识":"#8b62c9","健康":"#e8833a","社交":"#d4699e","副业":"#d6534f","主业":"#a07850"};
+const books = {
+ invest:[
+  {"n":"第一期(7本)","st":"已分配","pr":"P1","list":"财报就像一本会计书 / 世界上最简单的会计书 / 股票真规则 / 投资护城河 / 大投机家 / 巴菲特案例集 / 大势研判"},
+  {"n":"第二期(6本)","st":"待分配","pr":"P1","list":"经济运行逻辑 / 金钱游戏(科斯托兰尼) / 商业的本质 / 金钱游戏透析市场本源 / 巴菲特致股东的信 / 彼得林奇的成功投资"},
+  {"n":"第三期(6本)","st":"待分配","pr":"P2","list":"乌合之众 / 大投机家的证券心理学 / 投资圣经 / 漫步华尔街 / 华尔街之舞 / 这次不一样"},
+  {"n":"第四期(6本)","st":"待分配","pr":"P2","list":"邓普顿教你逆向投资去 / 群体性狂热与泡沫经济笑做股市 / 投资者的未来 / 大癫狂 / 在股市遇见凯恩斯 / 与天为敌风险探索传奇"},
+  {"n":"第五期(6本)","st":"待分配","pr":"P2","list":"商品期货基本面分析 / 怎样选择成长股 / 超越华尔街 / 黑天鹅 / 赢 / 大败局1、2"},
+  {"n":"第六期(7本)","st":"待分配","pr":"P1","list":"原则 / 贼巢 / 暴利不会忘记但你却忘记了 / 金融炼金术 / 聪明的投资者 / 投资策略实战分析(上下) / 证券投资(上下)"},
+  {"n":"第七期(6本)","st":"待分配","pr":"P2","list":"非理性繁荣 / 动物精神 / 资本战争 / 布局天下 / 反脆弱 / 物种起源"},
+  {"n":"补充(7本)","st":"待分配","pr":"P1","list":"金融怪杰 / 以交易为生I / 以交易为生II / 抄底中国股市 / 艾略特波浪理论 / 行为金融与投资心理学 / 股票大作手回忆录"}],
+ polit:[
+  {"n":"历史哲学篇(6本)","st":"待分配","pr":"P1","list":"资本论 / 毛选 / 论历史唯物主义 / 史记 / 资治通鉴 / 马克思主义哲学十讲"},
+  {"n":"宏观周期类","st":"待分配","pr":"P1","list":"国家为什么会破产:大周期(达利欧)"},
+  {"n":"领导人著作篇(7本/系列)","st":"待分配","pr":"P1","list":"论坚持人与自然和谐共生 / 知之深爱之切 / 之江新语 / 摆脱贫困 / 论中国信息技术产业发展 / 中国能源问题研究 / 习近平“在系列”"},
+  {"n":"外国友人视角篇(2本)","st":"待分配","pr":"P1","list":"How China's Leaders Think / 他改变了中国:江泽民传(库恩)"},
+  {"n":"求是/红旗历史期刊","st":"待分配","pr":"P2","list":"1990年起历期,长期滚动阅读,按月定额推进"}],
+ course:[
+  {"n":"learn-claude-code","st":"已分配","pr":"P0","list":"智能体开发方向,与主业工作直接相关,7月已启动"},
+  {"n":"Offer多多大模型课程","st":"待分配","pr":"P0","list":"大模型应用/算法学习路线 + 八股 + 面试实战"},
+  {"n":"机器学习基础","st":"待分配","pr":"P0","list":"智能体开发的基础知识体系之一"},
+  {"n":"深度学习基础","st":"待分配","pr":"P0","list":"智能体开发的基础知识体系之一"},
+  {"n":"强化学习基础","st":"待分配","pr":"P1","list":"与 Agent 决策/训练相关的进阶方向"},
+  {"n":"数据结构与算法","st":"待分配","pr":"P1","list":"基础八股 + 面试必备"},
+  {"n":"设计模式","st":"待分配","pr":"P2","list":"软件工程基础,提升代码设计能力"},
+  {"n":"Web 开发","st":"待分配","pr":"P2","list":"软件工程基础,产品开发能力相关"},
+  {"n":"操作系统原理","st":"待分配","pr":"P2","list":"计算机基础八股"},
+  {"n":"计算机网络基础","st":"待分配","pr":"P2","list":"与网络调试方向也有交集"}]
+};
+const stc = {"待分配":"wait","已分配":"assigned","进行中":"doing","已完成":"done","未开始":"todo","放弃":"wait","搁置":"wait"};
+const POOL_STATES = ["待分配","已分配","进行中","已完成"];
+
+/* ============ 联动核心 ============ */
+let DATA = null;
+const KEYK = 'lifeplanKey';
+function authHeader(){ return { 'Content-Type':'application/json', 'x-dash-key': sessionStorage.getItem(KEYK)||'' }; }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1600); }
+
+async function loadData(){
+  const ac = new AbortController();
+  const timer = setTimeout(()=>ac.abort(), 15000);
+  try{
+    const r = await fetch('/api/data', { headers: authHeader(), signal: ac.signal });
+    if(r.status===401){ throw {code:401}; }
+    if(!r.ok) throw new Error(await r.text());
+    DATA = await r.json();
+    Object.keys(STEP_CACHE).forEach(k=>delete STEP_CACHE[k]); // 整体重拉时清步骤缓存,防陈旧
+  } finally { clearTimeout(timer); }
+}
+// 重新拉取并重渲染(与 Notion 对账;不改变当前所在子页面)
+async function reload(){ await loadData(); renderAll(); }
+
+async function pushUpdate(pageId, property, propType, value){
+  try{
+    await apiPost('/api/update', {pageId, property, propType, value});
+    toast('已写回 Notion ✓');
+  }catch(e){ console.error(e); await reload().catch(()=>{}); toast('网络波动,已同步最新状态,请确认'); }
+}
+// 带超时的写请求(链路挂死时 ~15s 中止,按失败走对账)
+async function apiPost(path, body){
+  const ac = new AbortController();
+  const timer = setTimeout(()=>ac.abort(), 15000);
+  try{
+    const r = await fetch(path, { method:'POST', headers:authHeader(), body: JSON.stringify(body), signal: ac.signal });
+    if(!r.ok) throw new Error(await r.text());
+    return await r.json();
+  } finally { clearTimeout(timer); }
+}
+async function apiGet(path){
+  const ac = new AbortController();
+  const timer = setTimeout(()=>ac.abort(), 15000);
+  try{
+    const r = await fetch(path, { headers:authHeader(), signal: ac.signal });
+    if(!r.ok) throw new Error(await r.text());
+    return await r.json();
+  } finally { clearTimeout(timer); }
+}
+async function deleteItem(pageId){
+  try{ await apiPost('/api/delete',{pageId}); toast('已删除(移入 Notion 回收站)'); return true; }
+  catch(e){ console.error(e); await reload().catch(()=>{}); toast('网络波动,已同步最新状态,请确认'); return false; }
+}
+
+/* ============ 渲染 ============ */
+function renderAll(){
+  const d = DATA;
+  document.getElementById('ovSub').textContent = '实时数据 · 拉取于 ' + new Date(d.snapshot).toLocaleString('zh-CN');
+  const growthWait = d.growthPool.filter(x=>x.st==='待分配').length;
+  document.getElementById('kpis').innerHTML = [
+    ['年度目标', d.goals.length, '覆盖各领域'],
+    ['任务池·待分配', growthWait, '成长池待挑选'],
+    ['本月事项', d.monthly.length, '7 月计划'],
+    ['两周任务', d.weekly.length, '26W27 · 26W28'],
+  ].map(k=>`<div class="card kpi"><div class="num">${k[1]}</div><div class="lab">${k[0]}</div><div class="sub">${k[2]}</div></div>`).join('');
+
+  // 年度目标(进度可编辑 · 可增删)
+  renderGoals();
+
+  // 月度(完成度可编辑)
+  renderMonthly();
+
+  // 任务池(看板 · 拖动改状态 / 拖到本月分配)
+  renderPools();
+
+  // 月度甘特(整月)+ 周计划甘特(本周)+ 本周/下周卡片(按今天动态)
+  renderGantt('gantt','month');
+  renderGantt('weekGantt','week');
+  refreshWeekCards();
+
+  // 每日:当日待办 + 任务参考(= 视图日所在 ISO 周)
+  renderDaily();
+  renderDayPage();
+
+  renderBooks(document.querySelector('.tab.on')?.dataset.tab || 'invest');
+  updateTimeHeads();
+}
+// 每日页:视图日所在周的任务参考列表 + 日期英雄区(renderAll 与日切换共用)
+function renderDayPage(){
+  const wkLabel=isoWeekLabelJS(viewDayStr());
+  const curWk = DATA.weekly.filter(w=>w.w===wkLabel);
+  document.getElementById('daylist').innerHTML = curWk.length ? curWk.map(w=>dayRow(w)).join('') : '<div class="empty-hint">该周暂无任务</div>';
+  bindWeekChecks('daylist');
+  bindDaySteps();
+}
+
+/* ---- 年度目标(可增删) ---- */
+function renderGoals(){
+  const d=DATA;
+  document.getElementById('goals').innerHTML = d.goals.map((g,i)=>{
+    const col = DOMAIN_COLOR[g.d]||'#999';
+    const tc = g.s==='进行中'?'doing':(g.s==='完成'?'done':'todo');
+    return `<div class="card goal" data-gid="${g.id}">
+      <span class="del" data-delgoal="${i}" title="删除">×</span>
+      <div class="top"><span class="dot" style="background:${col}"></span><span class="name">${esc(g.n)}</span><span class="tag ${tc}">${g.s}</span></div>
+      <div class="crit">${esc(g.c)}</div>
+      <div class="pbar"><i id="gbar${i}" style="width:${g.p}%;background:${col}"></i></div>
+      <div class="pctline">${g.d||'—'} · 进度
+        <input class="pin" type="number" min="0" max="100" value="${g.p}" data-gi="${i}"> %</div></div>`;
+  }).join('');
+  document.querySelectorAll('.pin[data-gi]').forEach(inp=>inp.addEventListener('change',e=>{
+    let v=Math.max(0,Math.min(100,Number(e.target.value)||0)); e.target.value=v;
+    const g=d.goals[e.target.dataset.gi]; document.getElementById('gbar'+e.target.dataset.gi).style.width=v+'%';
+    pushUpdate(g.id,'当前进度','number',v);
+  }));
+  document.querySelectorAll('[data-delgoal]').forEach(x=>x.addEventListener('click',async e=>{
+    const g=d.goals[e.target.dataset.delgoal];
+    if(!confirm('删除年度目标「'+g.n+'」?')) return;
+    if(await deleteItem(g.id)){ d.goals.splice(d.goals.indexOf(g),1); renderGoals(); }
+  }));
+}
+// 添加年度目标表单
+document.getElementById('addGoalBtn').addEventListener('click',()=>{
+  const box=document.getElementById('goalForm');
+  if(box.innerHTML){ box.innerHTML=''; return; }
+  const doms=Object.keys(DOMAIN_COLOR).map(x=>`<option>${x}</option>`).join('');
+  box.innerHTML=`<div class="addform">
+    <input type="text" id="ngTitle" placeholder="目标(如:完成 CFA 一级)">
+    <select id="ngDomain">${doms}</select>
+    <input type="text" id="ngCrit" placeholder="成功标准(可选)">
+    <button class="save" id="ngSave">保存</button><button class="cancel" id="ngCancel">取消</button></div>`;
+  document.getElementById('ngCancel').onclick=()=>box.innerHTML='';
+  document.getElementById('ngTitle').focus();
+  document.getElementById('ngSave').onclick=async()=>{
+    const title=document.getElementById('ngTitle').value.trim();
+    if(!title){ toast('请填目标名'); return; }
+    try{
+      const {item}=await apiPost('/api/create',{target:'goal',title,domain:document.getElementById('ngDomain').value,criteria:document.getElementById('ngCrit').value.trim()});
+      DATA.goals.push(item); box.innerHTML=''; renderGoals(); toast('已添加 ✓');
+    }catch(e){ console.error(e); await reload().catch(()=>{}); toast('网络波动,已同步最新状态,请确认是否已添加'); }
+  };
+});
+
+/* ---- 月度计划(步骤清单 → 完成度自动算 · 可拖回取消分配) ---- */
+function renderMonthly(){
+  const d=DATA, el=document.getElementById('mlist');
+  const groups=['P0','P1','P2','其它'];
+  const html = groups.map(pr=>{
+    const items=d.monthly.map((m,i)=>({m,i}))
+      .filter(({m})=> !m.mon || m.mon===viewMonthStr())   // 按视图月过滤(无月份的手工条目各月都显示)
+      .filter(({m})=> pr==='其它' ? !PRIOS.includes(m.pr) : m.pr===pr);
+    if(!items.length) return '';
+    const chips=items.map(({m,i})=>{
+      const tcls=m.type==='工作'?'work':'growth';
+      const ro = m.stepTotal>0 ? 'readonly title="由步骤自动计算"' : '';
+      const sched=DATA.weekly.filter(w=>w.monthlyId===m.id).length;
+      return `<div class="pcard mcard${m._open?' open':''}" draggable="true" data-mi="${i}" title="拖到上方甘特图=排期 · 拖到下方虚线区=退回任务池 · 点开步骤">
+        <span class="badge ${m.pr}">${m.pr||'--'}</span><span class="type ${tcls}">${m.type}</span>
+        <span class="pc-t">${esc(m.n)}</span>
+        <input class="pin mpin" type="number" min="0" max="100" value="${m.p}" data-mi="${i}" ${ro}><span class="mpct">%</span>
+        ${sched?`<span class="mtag-cnt" title="已在甘特图排期">已排期</span>`:''}
+        <span class="medit" data-medit="${i}" title="编辑名称/优先级">✎</span>
+        <span class="mstep-toggle" data-toggle="${i}" title="步骤">▸</span>
+        <span class="mok" data-mok="${i}" title="完成 → 已完成池">✓</span>
+        <div class="msteps" id="msteps${i}" ${m._open?'':'hidden'}></div></div>`;
+    }).join('');
+    return `<div class="pool-layer"><span class="pl-lab">${pr}</span><div class="pl-cards">${chips}</div></div>`;
+  }).join('');
+  el.innerHTML = html || `<div class="empty-hint">${viewMonth.getFullYear()}年${viewMonth.getMonth()+1}月还没有任务(从下方任务池点 ↑ 排上来)</div>`;
+  el.querySelectorAll('.mpin[data-mi]').forEach(inp=>{
+    inp.addEventListener('click',e=>e.stopPropagation());
+    inp.addEventListener('change',e=>{ if(e.target.hasAttribute('readonly')) return;
+      let v=Math.max(0,Math.min(100,Number(e.target.value)||0)); e.target.value=v;
+      pushUpdate(d.monthly[e.target.dataset.mi].id,'完成度','number',v); });
+  });
+  el.querySelectorAll('[data-mok]').forEach(x=>x.addEventListener('click',e=>{ e.stopPropagation(); completeMonthly(+x.dataset.mok); }));
+  el.querySelectorAll('[data-medit]').forEach(x=>x.addEventListener('click',e=>{ e.stopPropagation(); openEditModal('monthly',+x.dataset.medit); }));
+  el.querySelectorAll('.mstep-toggle').forEach(t=>t.addEventListener('click',e=>{ e.stopPropagation(); toggleSteps(+t.dataset.toggle); }));
+  el.querySelectorAll('.mcard[data-mi]').forEach(chip=>{
+    chip.addEventListener('click',e=>{ if(e.target.closest('.mok')||e.target.closest('.mpin')||e.target.closest('.mstep-toggle')||e.target.closest('.msteps')) return; toggleSteps(+chip.dataset.mi); });
+    chip.addEventListener('dragstart',e=>{ const m=d.monthly[chip.dataset.mi];
+      dragged={kind:'monthly', id:m.id, name:m.n, type:m.type, pr:m.pr, poolId:m.poolId, poolKind:m.poolKind};
+      chip.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
+    chip.addEventListener('dragend',()=>{ chip.classList.remove('dragging'); dragged=null; });
+  });
+  d.monthly.forEach((m,i)=>{ if(m._open){ const p=document.getElementById('msteps'+i);
+    if(p){ p.hidden=false; mountSteps(p, m.id, (pct,total)=>applyPercent(i,pct,total)); } } });
+}
+// 顺延:本视图月未完成(未排期或完成度<100%)的规划池任务 → 下个月;其未完成排期条作废删除,步骤跟任务走
+async function rolloverUnfinished(){
+  const btn=document.getElementById('rollBtn');
+  const from=viewMonthStr();
+  const toD=new Date(viewMonth.getFullYear(),viewMonth.getMonth()+1,1);
+  const to=toD.getFullYear()+'-'+String(toD.getMonth()+1).padStart(2,'0');
+  const toLabel=`${toD.getFullYear()}年${toD.getMonth()+1}月`;
+  const items=DATA.monthly.filter(m=>(!m.mon||m.mon===from)&&(m.p||0)<100);
+  if(!items.length){ toast('本月没有需要顺延的任务'); return; }
+  const bars=DATA.weekly.filter(w=>!w.done&&items.some(m=>m.id===w.monthlyId));
+  const msg=`将把 ${items.length} 个未完成任务顺延到 ${toLabel}:\n\n${items.map(m=>'· '+m.n).join('\n')}\n\n`
+    +(bars.length?`其中 ${bars.length} 条未完成的排期条将作废删除(到 ${toLabel} 重新拖排期),步骤保留。\n\n`:'')+'确定顺延?';
+  if(!confirm(msg)) return;
+  btn.disabled=true;
+  let ok=0, fail=0;
+  for(const m of items){
+    btn.textContent=`顺延中 ${ok+fail+1}/${items.length}…`;
+    try{
+      await apiPost('/api/update',{pageId:m.id,property:'月份',propType:'select',value:to});
+      if(m.poolId) await apiPost('/api/update',{pageId:m.poolId,property:'分配月份',propType:'text',value:to}).catch(()=>{});
+      for(const w of bars.filter(x=>x.monthlyId===m.id)){
+        await apiPost('/api/delete',{pageId:w.id});
+        const k=DATA.weekly.indexOf(w); if(k>=0) DATA.weekly.splice(k,1);
+      }
+      m.mon=to; ok++;
+    }catch(e){ console.error(e); fail++; }
+  }
+  btn.disabled=false; btn.textContent='未完成顺延下月 ↷';
+  if(fail){ await reload().catch(()=>{}); toast(`顺延完成 ${ok} 个,${fail} 个失败(已对账,可重点一次)`); }
+  else toast(`已把 ${ok} 个任务顺延到 ${toLabel} ✓`);
+  renderMonthly(); rerenderScheduling();
+}
+document.getElementById('rollBtn').addEventListener('click',rolloverUnfinished);
+// 完成本月计划条目:归档月度条 + 关联任务池条目置已完成 → 移入已完成池
+async function completeMonthly(i){
+  const m=DATA.monthly[i]; if(!m) return;
+  if(!confirm('完成「'+m.n+'」?将移入已完成池,并从月度计划规划池移除。')) return;
+  DATA.monthly.splice(i,1);
+  if(m.poolId && m.poolKind){ const p=poolArr(m.poolKind).find(x=>x.id===m.poolId); if(p) p.st='已完成'; }
+  renderMonthly(); renderPools();
+  try{ await apiPost('/api/complete-monthly',{monthlyId:m.id, poolId:m.poolId}); toast('已完成 ✓'); }
+  catch(err){ console.error(err); await reload().catch(()=>{}); toast('网络波动,已同步'); }
+}
+// 通用步骤面板:挂到任意 panel,针对任意 Notion 页 pageId;变更后回调 onChange(percent,total,done)
+async function mountSteps(panel, pageId, onChange){
+  panel.innerHTML='<div class="step-loading">加载步骤…</div>';
+  let steps=[];
+  try{ const r=await apiGet('/api/steps?pageId='+pageId); steps=r.steps||[]; if(onChange) onChange(r.percent,r.total,r.done); }
+  catch(e){ console.error(e); panel.innerHTML='<div class="step-loading">加载失败,再点一次重试</div>'; return; }
+  function render(){
+    const total=steps.length, done=steps.filter(s=>s.checked).length, pct=total?Math.round(done/total*100):0;
+    const cnt = total>0 ? `<span class="step-cnt">${done}/${total} 完成 = ${pct}%</span>` : '<span class="step-cnt">还没有步骤</span>';
+    panel.innerHTML = cnt + steps.map(s=>
+      `<div class="step-item ${s.checked?'done':''}" data-bid="${s.id}"><input type="checkbox" class="scb" ${s.checked?'checked':''}><span class="st-t">${esc(s.text)}</span>${s.s?`<span class="st-date" title="在月度甘特图里排的期">📅${fmtMD(s.s)}${s.e&&s.e!==s.s?'-'+fmtMD(s.e):''}</span>`:''}<span class="stedit" data-editstep="${s.id}" title="修改步骤名称">✎</span><span class="del" data-delstep="${s.id}" title="删除">×</span></div>`).join('')
+      + `<div class="step-add"><input type="text" class="step-input" placeholder="添加一个步骤,回车确认…"><button class="step-addbtn">添加</button></div>`;
+    panel.querySelectorAll('.scb').forEach(cb=>cb.addEventListener('change',async e=>{
+      const bid=e.target.closest('[data-bid]').dataset.bid, checked=e.target.checked;
+      const s=steps.find(x=>x.id===bid); if(s) s.checked=checked; render();
+      try{ const r=await apiPost('/api/step-toggle',{pageId,blockId:bid,checked}); onChange&&onChange(r.percent,r.total,r.done);
+        const arr=STEP_CACHE[pageId]; if(Array.isArray(arr)){ const cs=arr.find(x=>x.id===bid); if(cs) cs.checked=checked; }
+        rerenderGantts(); syncDailyFromStep(bid,checked); }
+      catch(err){ console.error(err); await reload().catch(()=>{}); toast('网络波动,已同步'); }
+    }));
+    panel.querySelectorAll('[data-delstep]').forEach(x=>x.addEventListener('click',async e=>{
+      const bid=e.target.dataset.delstep; steps=steps.filter(s=>s.id!==bid); render();
+      try{ const r=await apiPost('/api/step-delete',{pageId,blockId:bid}); onChange&&onChange(r.percent,r.total,r.done); }
+      catch(err){ console.error(err); await reload().catch(()=>{}); toast('网络波动,已同步'); }
+    }));
+    panel.querySelectorAll('[data-editstep]').forEach(x=>x.addEventListener('click',e=>{
+      e.stopPropagation();
+      const bid=e.target.dataset.editstep, s=steps.find(y=>y.id===bid); if(!s) return;
+      const span=e.target.closest('.step-item').querySelector('.st-t');
+      inlineEditText(span, s.text, async text=>{
+        if(await renameStepCommit(pageId, bid, text)){ s.text=text; render(); }
+      });
+    }));
+    const inp=panel.querySelector('.step-input'), btn=panel.querySelector('.step-addbtn');
+    const add=async()=>{ const text=inp.value.trim(); if(!text) return;
+      try{ const r=await apiPost('/api/step-add',{pageId,text}); steps.push(r.step); render();
+        panel.querySelector('.step-input')?.focus(); onChange&&onChange(r.percent,r.total,r.done);
+      }catch(err){ console.error(err); await reload().catch(()=>{}); toast('网络波动,已同步'); } };
+    btn.addEventListener('click',add); inp.addEventListener('keydown',e=>{ if(e.key==='Enter') add(); });
+  }
+  render();
+}
+// 月任务展开/收起步骤(复用 mountSteps)
+function toggleSteps(i){
+  const m=DATA.monthly[i], panel=document.getElementById('msteps'+i); if(!panel) return;
+  const chip=panel.closest('.mcard');
+  // 同时只开一个:关掉其它卡片的步骤面板
+  document.querySelectorAll('.mcard.open').forEach(c=>{ if(c!==chip){ c.classList.remove('open');
+    const pi=+c.dataset.mi; if(DATA.monthly[pi]) DATA.monthly[pi]._open=false; const p=c.querySelector('.msteps'); if(p) p.hidden=true; } });
+  m._open=!m._open;
+  if(!m._open){ panel.hidden=true; chip&&chip.classList.remove('open'); return; }
+  panel.hidden=false; chip&&chip.classList.add('open');
+  mountSteps(panel, m.id, (pct,total)=>applyPercent(i,pct,total));
+}
+function applyPercent(i, percent, total){
+  const m=DATA.monthly[i]; if(!m) return; m.p=percent;
+  const inp=document.querySelector(`.mpin[data-mi="${i}"]`);
+  if(inp){ inp.value=percent; if(total>0){ inp.setAttribute('readonly',''); inp.title='由步骤自动计算'; } else { inp.removeAttribute('readonly'); inp.title=''; } }
+  updateTaskProgressUI(m.id);
+}
+
+/* ---- 任务池看板 + 拖拽 ---- */
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function poolArr(key){return key==='growth'?DATA.growthPool:DATA.workPool;}
+let dragged = null; // {key,id}
+
+const PRIOS=['P0','P1','P2'];
+function renderPools(){
+  renderPoolBox('growthPoolBox','growth');
+  renderPoolBox('workPoolBox','work');
+  renderDone();
+  const g=DATA.growthPool, w=DATA.workPool;
+  document.getElementById('growthCnt').textContent = `待分配 ${g.filter(x=>x.st==='待分配').length} · 共 ${g.length}`;
+  document.getElementById('workCnt').textContent = `待分配 ${w.filter(x=>x.st==='待分配').length} · 共 ${w.length}`;
+}
+// 任务池:只显示待分配,按优先级横向分层
+function renderPoolBox(elId, key){
+  const arr = poolArr(key).filter(x=>x.st==='待分配');
+  const el=document.getElementById(elId);
+  if(!arr.length){ el.innerHTML='<div class="empty-hint">没有待分配任务(都排上或完成了)</div>'; return; }
+  const groups=[...PRIOS,'其它'];
+  el.innerHTML = groups.map(pr=>{
+    const items = pr==='其它' ? arr.filter(x=>!PRIOS.includes(x.pr)) : arr.filter(x=>x.pr===pr);
+    if(!items.length) return '';
+    const cards=items.map(it=>
+      `<div class="pcard" draggable="true" data-key="${key}" data-id="${it.id}">
+         <span class="badge ${it.pr}">${it.pr||'--'}</span><span class="pc-t">${esc(it.t)}</span>
+         <span class="edit" data-editpool="${it.id}" title="编辑名称/优先级">✎</span><span class="up" data-uppool="${it.id}" title="排进月度计划规划池">↑</span><span class="del" data-delpool="${it.id}" title="删除">×</span></div>`).join('');
+    return `<div class="pool-layer"><span class="pl-lab">${pr==='其它'?'其它':pr}</span><div class="pl-cards">${cards}</div></div>`;
+  }).join('');
+  bindPoolBox(elId, key);
+}
+function bindPoolBox(elId, key){
+  const root=document.getElementById(elId);
+  root.querySelectorAll('.pcard').forEach(card=>{
+    card.addEventListener('dragstart',e=>{ dragged={kind:'pool', key:card.dataset.key, id:card.dataset.id};
+      card.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',card.dataset.id); });
+    card.addEventListener('dragend',()=>{ card.classList.remove('dragging'); dragged=null; });
+  });
+  root.querySelectorAll('[data-delpool]').forEach(x=>x.addEventListener('click',async e=>{
+    e.stopPropagation(); const arr=poolArr(key), item=arr.find(y=>y.id===e.target.dataset.delpool);
+    if(!item||!confirm('删除任务「'+item.t+'」?')) return;
+    if(await deleteItem(item.id)){ arr.splice(arr.indexOf(item),1); renderPools(); }
+  }));
+  root.querySelectorAll('[data-editpool]').forEach(x=>x.addEventListener('click',e=>{
+    e.stopPropagation(); openEditModal('pool',{key, id:e.target.dataset.editpool});
+  }));
+  root.querySelectorAll('[data-uppool]').forEach(x=>x.addEventListener('click',e=>{
+    e.stopPropagation(); const item=poolArr(key).find(y=>y.id===e.target.dataset.uppool); if(!item) return;
+    openAssignModal(key, item);
+  }));
+}
+// 已完成任务池:两个子池,横排
+function renderDone(){
+  ['growth','work'].forEach(key=>{
+    const arr=poolArr(key).filter(x=>x.st==='已完成');
+    const el=document.getElementById(key+'DoneBox');
+    document.getElementById(key+'DoneCnt').textContent = arr.length+' 条';
+    el.innerHTML = arr.length ? arr.map(it=>
+      `<div class="pcard done"><span class="badge ${it.pr}">${it.pr||'--'}</span><span class="pc-t">${esc(it.t)}</span>
+        <span class="restore" data-restore="${it.id}" data-key="${key}" title="恢复到任务池">↩</span>
+        <span class="del" data-deldone="${it.id}" data-key="${key}" title="删除">×</span></div>`).join('')
+      : '<div class="empty-hint">暂无已完成</div>';
+    el.querySelectorAll('[data-restore]').forEach(x=>x.addEventListener('click',async e=>{
+      const item=poolArr(e.target.dataset.key).find(y=>y.id===e.target.dataset.restore); if(!item) return;
+      item.st='待分配'; renderPools();
+      try{ await apiPost('/api/update',{pageId:item.id,property:'状态',propType:'select',value:'待分配'}); toast('已恢复到任务池'); }
+      catch(err){ console.error(err); await reload().catch(()=>{}); toast('网络波动,已同步'); }
+    }));
+    el.querySelectorAll('[data-deldone]').forEach(x=>x.addEventListener('click',async e=>{
+      const arr2=poolArr(e.target.dataset.key), item=arr2.find(y=>y.id===e.target.dataset.deldone);
+      if(!item||!confirm('删除任务「'+item.t+'」?')) return;
+      if(await deleteItem(item.id)){ arr2.splice(arr2.indexOf(item),1); renderPools(); }
+    }));
+  });
+}
+
+/* ---- 安排确认弹框(排进月度计划规划池,可选填步骤) ---- */
+// 本地步骤收集器(创建阶段用,无 API);复用 step-* 样式;返回 getTexts()
+function mountLocalSteps(panel){
+  let steps=[]; // [text]
+  function render(){
+    panel.innerHTML =
+      (steps.length ? `<span class="step-cnt">${steps.length} 个步骤</span>` : '<span class="step-cnt">还没有步骤(可留空)</span>')
+      + steps.map((t,i)=>`<div class="step-item" data-i="${i}"><span class="st-t">${esc(t)}</span><span class="del" data-deli="${i}" title="删除">×</span></div>`).join('')
+      + `<div class="step-add"><input type="text" class="step-input" placeholder="添加一个步骤,回车确认…"><button class="step-addbtn">添加</button></div>`;
+    panel.querySelectorAll('[data-deli]').forEach(x=>x.addEventListener('click',e=>{ steps.splice(+e.target.dataset.deli,1); render(); }));
+    const inp=panel.querySelector('.step-input'), btn=panel.querySelector('.step-addbtn');
+    const add=()=>{ const t=inp.value.trim(); if(!t) return; steps.push(t); render(); panel.querySelector('.step-input').focus(); };
+    btn.addEventListener('click',add); inp.addEventListener('keydown',e=>{ if(e.key==='Enter') add(); });
+  }
+  render();
+  return { getTexts:()=>steps.slice() };
+}
+let _amCtx=null, _amLocal=null;
+function openAssignModal(key, item){
+  if(DATA.monthly.some(m=>m.n===item.t)){ toast('月度规划池已有同名事项'); return; }
+  _amCtx={key, item, month:viewMonthStr()};   // 打开弹框时快照视图月
+  const tc = item.__type==='工作'?'work':(key==='work'?'work':'growth');
+  const typeName = key==='work'?'工作':'个人成长';
+  document.getElementById('amTask').innerHTML =
+    `<span class="badge ${item.pr}">${item.pr||'--'}</span><span class="type ${key==='work'?'work':'growth'}">${typeName}</span><span class="am-name">${esc(item.t)}</span>`;
+  _amLocal = mountLocalSteps(document.getElementById('amSteps'));
+  document.getElementById('assignModal').hidden=false;
+  setTimeout(()=>document.querySelector('#amSteps .step-input')?.focus(),30);
+}
+function closeAssignModal(){ document.getElementById('assignModal').hidden=true; _amCtx=null; _amLocal=null; }
+async function confirmAssign(){
+  if(!_amCtx) return;
+  const {key,item,month}=_amCtx; const texts=_amLocal?_amLocal.getTexts():[];
+  closeAssignModal();
+  item.st='已分配'; renderPools();   // 乐观:移出任务池
+  try{
+    const j=await apiPost('/api/assign',{poolPageId:item.id, poolType:key, title:item.t, priority:item.pr, month});
+    for(const t of texts){ await apiPost('/api/step-add',{pageId:j.monthlyId, text:t}); }
+    DATA.monthly.push({id:j.monthlyId, n:item.t, type:key==='work'?'工作':'个人成长', pr:item.pr, p:0, mon:month, poolId:item.id, poolKind:key, stepTotal:texts.length});
+    renderMonthly(); renderPools(); toast(texts.length?`已排进月度计划规划池(${texts.length}步)✓`:'已排进月度计划规划池 ✓');
+  }catch(err){ console.error(err); await reload().catch(()=>{}); toast('网络波动,已同步'); }
+}
+document.getElementById('amCancel').addEventListener('click',closeAssignModal);
+document.getElementById('amOk').addEventListener('click',confirmAssign);
+document.getElementById('assignModal').addEventListener('click',e=>{ if(e.target.id==='assignModal') closeAssignModal(); });
+
+/* ---- 编辑任务(规划池 chip / 任务池卡片):名称+优先级;改名级联同步关联池条目与甘特条(一对一同名) ---- */
+let _emCtx=null;
+function openEditModal(kind, ref){
+  let name='', pr='';
+  if(kind==='monthly'){ const m=DATA.monthly[ref]; if(!m) return; name=m.n; pr=m.pr||''; }
+  else{ const it=poolArr(ref.key).find(x=>x.id===ref.id); if(!it) return; name=it.t; pr=it.pr||''; }
+  _emCtx={kind, ref};
+  document.getElementById('emName').value=name;
+  document.getElementById('emPr').value=['P0','P1','P2'].includes(pr)?pr:'';
+  document.getElementById('editModal').hidden=false;
+  setTimeout(()=>document.getElementById('emName').select(),30);
+}
+function closeEditModal(){ document.getElementById('editModal').hidden=true; _emCtx=null; }
+async function saveEdit(){
+  if(!_emCtx) return;
+  const {kind,ref}=_emCtx;
+  const name=document.getElementById('emName').value.trim();
+  const pr=document.getElementById('emPr').value;
+  if(!name){ toast('名称不能为空'); return; }
+  closeEditModal();
+  try{
+    if(kind==='monthly'){
+      const m=DATA.monthly[ref]; if(!m) return;
+      const nameChanged=name!==m.n, prChanged=!!pr&&pr!==(m.pr||'');
+      if(!nameChanged&&!prChanged) return;
+      if(nameChanged) await apiPost('/api/update',{pageId:m.id,property:'事项',propType:'title',value:name});
+      if(prChanged) await apiPost('/api/update',{pageId:m.id,property:'优先级',propType:'select',value:pr});
+      // 级联:关联任务池条目 + 甘特排期条(次要写失败不阻断,reload 时对账)
+      if(m.poolId){
+        if(nameChanged) await apiPost('/api/update',{pageId:m.poolId,property:'任务',propType:'title',value:name}).catch(()=>{});
+        if(prChanged) await apiPost('/api/update',{pageId:m.poolId,property:'优先级',propType:'select',value:pr}).catch(()=>{});
+        const p=m.poolKind?poolArr(m.poolKind).find(x=>x.id===m.poolId):null;
+        if(p){ p.t=name; if(pr) p.pr=pr; }
+      }
+      for(const w of DATA.weekly.filter(x=>x.monthlyId===m.id)){
+        if(nameChanged) await apiPost('/api/update',{pageId:w.id,property:'任务',propType:'title',value:name}).catch(()=>{});
+        if(prChanged) await apiPost('/api/update',{pageId:w.id,property:'优先级',propType:'select',value:pr}).catch(()=>{});
+        w.t=name; if(pr) w.pr=pr;
+      }
+      m.n=name; if(pr) m.pr=pr;
+      renderMonthly(); renderPools(); rerenderGantts(); refreshWeekCards(); renderDayPage();
+      toast('已保存,关联排期条已同步 ✓');
+    }else{
+      const it=poolArr(ref.key).find(x=>x.id===ref.id); if(!it) return;
+      const nameChanged=name!==it.t, prChanged=!!pr&&pr!==(it.pr||'');
+      if(!nameChanged&&!prChanged) return;
+      if(nameChanged) await apiPost('/api/update',{pageId:it.id,property:'任务',propType:'title',value:name});
+      if(prChanged) await apiPost('/api/update',{pageId:it.id,property:'优先级',propType:'select',value:pr});
+      it.t=name; if(pr) it.pr=pr;
+      renderPools(); toast('已保存 ✓');
+    }
+  }catch(err){ console.error(err); await reload().catch(()=>{}); toast('网络波动,已同步最新状态,请确认'); }
+}
+document.getElementById('emCancel').addEventListener('click',closeEditModal);
+document.getElementById('emOk').addEventListener('click',saveEdit);
+document.getElementById('emName').addEventListener('keydown',e=>{ if(e.key==='Enter') saveEdit(); });
+document.getElementById('editModal').addEventListener('click',e=>{ if(e.target.id==='editModal') closeEditModal(); });
+
+// 添加任务到池
+document.querySelectorAll('[data-addpool]').forEach(btn=>btn.addEventListener('click',()=>{
+  const key=btn.dataset.addpool, box=document.getElementById(key+'Form');
+  if(box.innerHTML){ box.innerHTML=''; return; }
+  box.innerHTML=`<div class="addform">
+    <input type="text" id="np_${key}" placeholder="任务名称">
+    <select id="npp_${key}"><option value="">优先级</option><option>P0</option><option>P1</option><option>P2</option></select>
+    <button class="save" id="nps_${key}">保存</button><button class="cancel" id="npc_${key}">取消</button></div>`;
+  document.getElementById('npc_'+key).onclick=()=>box.innerHTML='';
+  document.getElementById('np_'+key).focus();
+  document.getElementById('nps_'+key).onclick=async()=>{
+    const title=document.getElementById('np_'+key).value.trim();
+    if(!title){ toast('请填任务名'); return; }
+    try{
+      const {item}=await apiPost('/api/create',{target:key,title,priority:document.getElementById('npp_'+key).value});
+      poolArr(key).push(item); box.innerHTML=''; renderPools(); toast('已添加 ✓');
+    }catch(e){ console.error(e); await reload().catch(()=>{}); toast('网络波动,已同步最新状态,请确认是否已添加'); }
+  };
+}));
+// 双向拖放区:池卡片→排进月度计划规划池(弹框确认) / 月度事项→退回任务池
+(function(){
+  const dz=document.getElementById('dropMonth');
+  const LABEL='⬇ 拖任务池卡片到此 = 排进月度计划规划池　｜　⬆ 拖规划池事项到此 = 退回任务池(取消分配)';
+  dz.addEventListener('dragover',e=>{ e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+  dz.addEventListener('drop',async e=>{ e.preventDefault(); dz.classList.remove('over');
+    if(!dragged) return;
+    if(dragged.kind==='pool'){
+      const key=dragged.key, item=poolArr(key).find(x=>x.id===dragged.id);
+      if(!item) return;
+      openAssignModal(key, item);   // 走确认弹框(提示填步骤)
+    } else if(dragged.kind==='monthly'){
+      const mid=dragged.id, poolId=dragged.poolId, poolKind=dragged.poolKind;  // 先存下
+      dz.textContent='退回中…';
+      let netErr=false;
+      try{ await apiPost('/api/unassign',{monthlyId:mid, poolId, poolKind}); }
+      catch(err){ netErr=true; console.error(err); }
+      await reload().catch(()=>{});
+      const gone=!DATA.monthly.some(m=>m.id===mid);
+      toast(gone ? (netErr?'已退回(网络波动,已同步)':'已退回任务池 ✓') : '退回失败,请重试');
+      dz.textContent=LABEL;
+    }
+  });
+})();
+
+// 任务进度片段(关联月度任务的完成度,勾待办/勾步骤后就地刷新)
+function taskProgHtml(w){
+  const m=w.monthlyId?DATA.monthly.find(x=>x.id===w.monthlyId):null;
+  if(!m) return '';
+  const p=m.p||0;
+  return `<span class="dprog" data-dprog="${w.monthlyId}" title="任务进度(按步骤完成数)"><i style="width:${p}%"></i></span><span class="dpct" data-dpct="${w.monthlyId}">${p}%</span>`;
+}
+// 就地刷新页面上所有该任务的进度显示(不重渲列表,不打断展开的步骤面板)
+function updateTaskProgressUI(monthlyId){
+  if(!monthlyId) return;
+  const m=DATA.monthly.find(x=>x.id===monthlyId); const p=m?(m.p||0):0;
+  document.querySelectorAll(`[data-dprog="${monthlyId}"] i`).forEach(i=>i.style.width=p+'%');
+  document.querySelectorAll(`[data-dpct="${monthlyId}"]`).forEach(x=>x.textContent=p+'%');
+}
+function weekRow(w){
+  const tcls = w.type==='工作'?'work':'growth';
+  const canStep = !!w.monthlyId;
+  return `<div class="wentry">
+    <div class="witem ${w.done?'checked':''}" data-id="${w.id}">
+      ${canStep?`<span class="wstep-toggle" data-wid="${w.id}" title="步骤">▸</span>`:'<span class="wstep-none"></span>'}
+      <input type="checkbox" class="cbox" ${w.done?'checked':''}>
+      <span class="t">${esc(w.t)}</span>${taskProgHtml(w)}<span class="badge ${w.pr}">${w.pr}</span><span class="type ${tcls}">${w.type}</span></div>
+    ${canStep?`<div class="wsteps" id="wsteps_${w.id}" hidden></div>`:''}</div>`;
+}
+function dayRow(w){
+  const tcls = w.type==='工作'?'work':'growth';
+  const canStep = !!w.monthlyId;
+  return `<div class="wentry">
+    <div class="dayitem ${w.done?'checked':''}" data-id="${w.id}">
+      ${canStep?`<span class="dstep-toggle" data-dstep="${w.id}" title="展开步骤,可点/拖步骤加入今日待办">▸</span>`:'<span class="wstep-none"></span>'}
+      <input type="checkbox" class="cbox" ${w.done?'checked':''}>
+      <span class="t">${esc(w.t)}</span>${taskProgHtml(w)}<span class="badge ${w.pr}">${w.pr}</span><span class="type ${tcls}">${w.type}</span></div>
+    ${canStep?`<div class="dsteps" id="dsteps_${w.id}" hidden></div>`:''}</div>`;
+}
+function toggleDayPanel(wid){
+  const w=DATA.weekly.find(x=>x.id===wid);
+  const panel=document.getElementById('dsteps_'+wid);
+  const t=document.querySelector(`#daylist [data-dstep="${wid}"]`);
+  if(!w||!panel) return;
+  if(!panel.hidden){ panel.hidden=true; if(t) t.classList.remove('open'); return; }
+  panel.hidden=false; if(t) t.classList.add('open'); mountDaySteps(panel, w);
+}
+function bindDaySteps(){
+  document.querySelectorAll('#daylist [data-dstep]').forEach(t=>t.addEventListener('click',e=>{ e.stopPropagation(); toggleDayPanel(t.dataset.dstep); }));
+  // 点任务整行 = 展开/收起步骤(避开任务完成复选框)
+  document.querySelectorAll('#daylist .dayitem[data-id]').forEach(row=>row.addEventListener('click',e=>{
+    if(e.target.closest('input')) return;
+    const w=DATA.weekly.find(x=>x.id===row.dataset.id);
+    if(w&&w.monthlyId) toggleDayPanel(row.dataset.id);
+  }));
+}
+// 每日页步骤面板:可勾选/增删(与甘特同一套操作,共用 STEP_CACHE),未完成步骤可点/拖加入当日待办
+async function mountDaySteps(panel, w){
+  let steps=STEP_CACHE[w.monthlyId];
+  if(!Array.isArray(steps)){
+    panel.innerHTML='<div class="step-loading">加载步骤…</div>';
+    try{ const r=await apiGet('/api/steps?pageId='+w.monthlyId); steps=r.steps||[]; STEP_CACHE[w.monthlyId]=steps; }
+    catch(e){ console.error(e); panel.innerHTML='<div class="step-loading">加载失败,再点一次重试</div>'; return; }
+  }
+  const day=viewDayStr();
+  const dayLab=isViewDayToday()?'今日':(viewDay.getMonth()+1)+'/'+viewDay.getDate();
+  const inDay=bid=>(DATA.daily||[]).some(d=>d.date===day&&d.stepRef&&d.stepRef.blockId===bid);
+  const addRow=`<div class="dstep-item dstep-addrow"><input class="dstep-addinp" placeholder="＋ 步骤,回车添加"></div>`;
+  panel.innerHTML=steps.map(s=>{
+    const dup=!s.checked&&inDay(s.id);
+    const canAdd=!s.checked&&!dup;
+    return `<div class="dstep-item${s.checked?' done':''}${dup?' intoday':''}" data-bid="${s.id}" ${canAdd?'draggable="true"':''} title="${esc(s.text)} · 点击编辑名称${canAdd?' · ＋按钮或拖动加入待办':''}">
+      <input type="checkbox" class="dscb" data-bid="${s.id}" ${s.checked?'checked':''}>
+      <span class="dst">${esc(s.text)}</span>${s.s?`<span class="st-date">📅${fmtMD(s.s)}${s.e&&s.e!==s.s?'-'+fmtMD(s.e):''}</span>`:''}
+      ${s.checked?'':(dup?`<span class="dtag">已在${dayLab}</span>`:`<span class="dstep-add" title="加入${dayLab}待办">＋${dayLab}</span>`)}
+      <span class="dsedit" data-bid="${s.id}" title="修改步骤名称">✎</span><span class="dsdel" data-bid="${s.id}" title="删除步骤">×</span></div>`;
+  }).join('')+addRow;
+  const refreshAll=(r)=>{ const m=DATA.monthly.find(x=>x.id===w.monthlyId);
+    if(m&&r&&r.percent!=null){ m.p=r.percent; m.stepTotal=r.total; renderMonthly(); }
+    rerenderGantts(); refreshDayStepPanels(); updateTaskProgressUI(w.monthlyId); };
+  // 勾选步骤:同步月度完成度/甘特/当日待办
+  panel.querySelectorAll('.dscb').forEach(cb=>{
+    cb.addEventListener('click',e=>e.stopPropagation());
+    cb.addEventListener('change',async ()=>{
+      const s=steps.find(x=>x.id===cb.dataset.bid); if(!s) return;
+      const old=s.checked; s.checked=cb.checked;
+      try{ const r=await apiPost('/api/step-toggle',{pageId:w.monthlyId,blockId:s.id,checked:s.checked});
+        syncDailyFromStep(s.id, s.checked); refreshAll(r); }
+      catch(err){ console.error(err); s.checked=old; refreshDayStepPanels(); toast('网络波动,请重试'); }
+    });
+  });
+  // ✎ 改名:文本原地变输入框(悬停显示)
+  panel.querySelectorAll('.dsedit').forEach(ed=>{
+    ed.addEventListener('click',e=>{ e.stopPropagation();
+      const s=steps.find(x=>x.id===ed.dataset.bid); if(!s) return;
+      const span=ed.closest('.dstep-item').querySelector('.dst');
+      inlineEditText(span, s.text, text=>renameStepCommit(w.monthlyId, s.id, text)); });
+  });
+  // × 删除步骤(悬停显示)
+  panel.querySelectorAll('.dsdel').forEach(del=>{
+    del.addEventListener('click',async e=>{ e.stopPropagation();
+      const s=steps.find(x=>x.id===del.dataset.bid); if(!s) return;
+      if(!confirm('删除步骤「'+s.text+'」?')) return;
+      try{ const r=await apiPost('/api/step-delete',{pageId:w.monthlyId,blockId:s.id});
+        const k=steps.indexOf(s); if(k>=0) steps.splice(k,1);
+        refreshAll(r); toast('步骤已删除'); }
+      catch(err){ console.error(err); await reload().catch(()=>{}); toast('网络波动,已同步'); }
+    });
+  });
+  // 底部回车添加
+  const inp=panel.querySelector('.dstep-addinp');
+  if(inp){ inp.addEventListener('click',e=>e.stopPropagation());
+    inp.addEventListener('keydown',async e=>{
+      if(e.key!=='Enter') return;
+      const text=inp.value.trim(); if(!text) return;
+      inp.disabled=true;
+      try{ const r=await apiPost('/api/step-add',{pageId:w.monthlyId,text});
+        steps.push({id:r.step.id,text,checked:false,s:null,e:null});
+        refreshAll(r); toast('步骤已添加');
+        const ni=document.getElementById(panel.id)?.querySelector('.dstep-addinp'); if(ni) ni.focus(); }
+      catch(err){ console.error(err); inp.disabled=false; toast('添加失败,请重试'); }
+    });
+  }
+  // 点行 = 就地编辑名称;「＋今日」按钮/拖行 = 加入当日待办
+  panel.querySelectorAll('.dstep-item[data-bid]').forEach(row=>{
+    const s=steps.find(x=>x.id===row.dataset.bid); if(!s) return;
+    row.addEventListener('click',e=>{ e.stopPropagation();
+      inlineEditText(row.querySelector('.dst'), s.text, text=>renameStepCommit(w.monthlyId, s.id, text)); });
+    if(row.getAttribute('draggable')==='true'){
+      row.addEventListener('dragstart',()=>{ dragged={kind:'step',text:s.text,blockId:s.id,monthlyId:w.monthlyId}; row.classList.add('dragging'); });
+      row.addEventListener('dragend',()=>{ row.classList.remove('dragging'); dragged=null; });
+    }
+  });
+  panel.querySelectorAll('.dstep-add').forEach(btn=>{
+    btn.addEventListener('click',e=>{ e.stopPropagation();
+      const row=btn.closest('.dstep-item'); const s=steps.find(x=>x.id===row.dataset.bid); if(!s) return;
+      addStepTodo({text:s.text,blockId:s.id,monthlyId:w.monthlyId}); });
+  });
+}
+function refreshDayStepPanels(){
+  document.querySelectorAll('.dsteps').forEach(p=>{ if(p.hidden) return;
+    const w=DATA.weekly.find(x=>'dsteps_'+x.id===p.id); if(w) mountDaySteps(p,w); });
+}
+let addStepBusy=false;
+async function addStepTodo(step){
+  if(addStepBusy) return;
+  const day=viewDayStr();
+  if((DATA.daily||[]).some(d=>d.date===day&&d.stepRef&&d.stepRef.blockId===step.blockId)){ toast('该步骤已在这一天的待办里'); return; }
+  addStepBusy=true;
+  try{
+    const {item}=await apiPost('/api/create',{target:'daily',title:step.text,date:day,stepRef:{monthlyId:step.monthlyId,blockId:step.blockId}});
+    DATA.daily=DATA.daily||[]; DATA.daily.push(item);
+    renderDaily(); refreshDayStepPanels(); toast('已加入今日待办 ✓');
+  }catch(e){ console.error(e); await reload().catch(()=>{}); toast('网络波动,已同步'); }
+  finally{ addStepBusy=false; }
+}
+// 步骤状态统一应用:翻步骤缓存 + 月度完成度 + 两个甘特
+function applyStepState(monthlyId, blockId, checked, percent, total){
+  const arr=STEP_CACHE[monthlyId];
+  if(Array.isArray(arr)){ const s=arr.find(x=>x.id===blockId); if(s) s.checked=checked; }
+  const m=DATA.monthly.find(x=>x.id===monthlyId);
+  if(m&&percent!=null){ m.p=percent; if(total!=null) m.stepTotal=total; renderMonthly(); }
+  rerenderGantts(); updateTaskProgressUI(monthlyId);
+}
+// 步骤改名后统一应用:翻缓存文本 + 同步各日待办里来自该步骤的条目标题 + 重渲各视图
+function applyStepRename(monthlyId, blockId, text){
+  const arr=STEP_CACHE[monthlyId];
+  if(Array.isArray(arr)){ const s=arr.find(x=>x.id===blockId); if(s) s.text=text; }
+  (DATA.daily||[]).filter(d=>d.stepRef&&d.stepRef.blockId===blockId).forEach(rec=>{
+    rec.t=text;
+    apiPost('/api/update',{pageId:rec.id,property:'待办',propType:'title',value:text}).catch(()=>{});
+  });
+  rerenderGantts(); refreshDayStepPanels(); renderDaily();
+}
+// 就地编辑:把文本 span 原地换成输入框,回车/失焦保存,Esc 取消
+function inlineEditText(span, curText, commit){
+  if(!span||span.dataset.editing) return;
+  span.dataset.editing='1';
+  const inp=document.createElement('input');
+  inp.type='text'; inp.value=curText; inp.className='inline-edit';
+  span.replaceWith(inp);
+  inp.focus(); inp.select();
+  let done=false;
+  const finish=async(save)=>{
+    if(done) return; done=true;
+    const text=inp.value.trim();
+    if(save && text && text!==curText){ await commit(text); }   // 成功路径由 commit 触发重渲,输入框随之销毁
+    else if(inp.isConnected){ inp.replaceWith(span); delete span.dataset.editing; }
+  };
+  inp.addEventListener('keydown',e=>{ e.stopPropagation();
+    if(e.key==='Enter') finish(true);
+    else if(e.key==='Escape') finish(false); });
+  inp.addEventListener('blur',()=>finish(true));
+  inp.addEventListener('click',e=>e.stopPropagation());
+  inp.addEventListener('pointerdown',e=>e.stopPropagation());
+  inp.addEventListener('dragstart',e=>e.preventDefault());
+}
+// 提交改名(所有步骤入口共用)
+async function renameStepCommit(monthlyId, blockId, text){
+  try{ await apiPost('/api/step-rename',{blockId,text}); applyStepRename(monthlyId,blockId,text); toast('步骤已改名 ✓'); return true; }
+  catch(err){ console.error(err); await reload().catch(()=>{}); toast('网络波动,已同步'); return false; }
+}
+// 在甘特/步骤卡里勾了步骤 → 各日待办里来自该步骤的条目全部跟着勾(步骤完成=其所有关联待办完成)
+function syncDailyFromStep(blockId, checked){
+  const recs=(DATA.daily||[]).filter(d=>d.stepRef&&d.stepRef.blockId===blockId&&d.done!==checked);
+  if(!recs.length) return;
+  recs.forEach(rec=>{ rec.done=checked;
+    apiPost('/api/update',{pageId:rec.id,property:'完成',propType:'checkbox',value:checked}).catch(()=>{}); });
+  renderDaily(); refreshDayStepPanels();
+}
+function bindWeekChecks(container){
+  document.querySelectorAll('#'+container+' .cbox').forEach(cb=>cb.addEventListener('change',e=>{
+    const row=e.target.closest('[data-id]'); const id=row.dataset.id; const val=e.target.checked;
+    row.classList.toggle('checked',val);
+    // 同步内存 + 联动另一处的同一任务
+    const rec=DATA.weekly.find(x=>x.id===id); if(rec) rec.done=val;
+    document.querySelectorAll(`[data-id="${id}"] .cbox`).forEach(o=>{o.checked=val;o.closest('[data-id]').classList.toggle('checked',val);});
+    pushUpdate(id,'完成情况','checkbox',val);
+  }));
+}
+function weekCol(el, wk){
+  const items=DATA.weekly.filter(w=>w.w===wk);
+  document.getElementById(el).innerHTML = items.length ? items.map(weekRow).join('') : '<div class="empty-hint">本周暂无任务</div>';
+  bindWeekChecks(el);
+  const wToggle=(wid)=>{
+    const w=DATA.weekly.find(x=>x.id===wid); if(!w||!w.monthlyId) return;
+    const panel=document.getElementById('wsteps_'+wid); if(!panel) return;
+    const t=document.querySelector('#'+el+' .wstep-toggle[data-wid="'+wid+'"]');
+    if(!panel.hidden){ panel.hidden=true; if(t) t.classList.remove('open'); return; }
+    panel.hidden=false; if(t) t.classList.add('open'); mountSteps(panel, w.monthlyId, null);
+  };
+  document.querySelectorAll('#'+el+' .wstep-toggle').forEach(t=>t.addEventListener('click',e=>{ e.stopPropagation(); wToggle(t.dataset.wid); }));
+  // 点任务整行 = 展开/收起步骤(避开完成复选框)
+  document.querySelectorAll('#'+el+' .witem[data-id]').forEach(row=>row.addEventListener('click',e=>{
+    if(e.target.closest('input')) return;
+    wToggle(row.dataset.id);
+  }));
+}
+function renderBooks(key){
+  document.getElementById('books').innerHTML = books[key].map(b=>
+    `<div class="card book"><div class="bt"><span class="bn">${b.n}</span><span class="badge ${b.pr}">${b.pr}</span><span class="tag ${stc[b.st]}">${b.st}</span></div>
+     <div class="list">${b.list}</div></div>`).join('');
+}
+
+/* ---- 今日待办(每日执行库 · 可增删打勾) ---- */
+function todayStr(){ const n=new Date(); return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0'); }
+function renderDaily(){
+  const day=viewDayStr();
+  const items=(DATA.daily||[]).filter(x=> x.date===day || (!x.date && isViewDayToday()));  // 无日期的浮动待办只在真实今天显示
+  const pending=items.filter(x=>!x.done), doneItems=items.filter(x=>x.done);
+  const row=it=>
+    `<div class="todo-item ${it.done?'done':''}" data-id="${it.id}">
+       <input type="checkbox" class="cbox" ${it.done?'checked':''}>
+       <span class="tt">${esc(it.t)}</span>${it.stepRef?'<span class="src-step" title="来自任务步骤,勾选会同步步骤完成">步骤</span>':''}<span class="del" data-deltodo="${it.id}" title="删除">×</span></div>`;
+  const el=document.getElementById('todoList');
+  el.innerHTML = pending.length ? pending.map(row).join('')
+    : `<div class="empty-hint">${items.length?'待办都完成了 🎉':'今天还没有待办,上面加一条试试。'}</div>`;
+  // 已完成视图:有已完成才显示
+  const dh=document.getElementById('doneH2'), dl=document.getElementById('doneList');
+  const dayLab=isViewDayToday()?'今日':(viewDay.getMonth()+1)+'/'+viewDay.getDate();
+  dh.hidden=dl.hidden=!doneItems.length;
+  document.getElementById('doneH2t').textContent=`${dayLab}已完成 · ${doneItems.length} 项`;
+  dl.innerHTML=doneItems.map(row).join('');
+  document.querySelectorAll('#todoList .cbox, #doneList .cbox').forEach(cb=>cb.addEventListener('change',async e=>{
+    const id=e.target.closest('[data-id]').dataset.id, val=e.target.checked;
+    e.target.closest('.todo-item').classList.toggle('done',val);
+    const rec=DATA.daily.find(x=>x.id===id); if(!rec) return;
+    rec.done=val;
+    if(!rec.stepRef){ renderDaily(); pushUpdate(id,'完成','checkbox',val); return; }
+    // 来自步骤的待办:严格串行双写(每日完成 → 步骤勾选),期间禁用防连点竞态
+    const sr=rec.stepRef;
+    cb.disabled=true;
+    let msg='';
+    try{ await apiPost('/api/update',{pageId:id,property:'完成',propType:'checkbox',value:val}); }
+    catch(err){ console.error(err); await reload().catch(()=>{}); toast('网络波动,已同步最新状态,请确认'); return; }
+    try{
+      const r=await apiPost('/api/step-toggle',{pageId:sr.monthlyId,blockId:sr.blockId,checked:val});
+      if(r&&r.orphan){
+        rec.stepRef=null;
+        apiPost('/api/update',{pageId:id,property:'关联步骤',propType:'text',value:''}).catch(()=>{});
+        msg='关联步骤已失效(每日勾选已保存)';
+      }else{
+        applyStepState(sr.monthlyId, sr.blockId, val, r.percent, r.total);
+        msg=val?'已完成,步骤已同步 ✓':'已取消,步骤已同步';
+      }
+    }catch(err){
+      // 反向补偿:退回每日勾选,不留"每日已勾、步骤未勾"的永久分叉
+      console.error(err); rec.done=!val;
+      try{ await apiPost('/api/update',{pageId:id,property:'完成',propType:'checkbox',value:!val}); }catch(e2){}
+      msg='步骤同步失败,已回退';
+    }
+    renderDaily(); refreshDayStepPanels(); toast(msg);
+  }));
+  document.querySelectorAll('#todoList [data-deltodo], #doneList [data-deltodo]').forEach(x=>x.addEventListener('click',async e=>{
+    const id=e.target.dataset.deltodo, rec=DATA.daily.find(y=>y.id===id);
+    if(!confirm('删除待办「'+(rec?rec.t:'')+'」?')) return;
+    if(await deleteItem(id)){ DATA.daily.splice(DATA.daily.indexOf(rec),1); renderDaily(); }
+  }));
+}
+async function addTodo(){
+  const inp=document.getElementById('todoInput'), title=inp.value.trim();
+  if(!title){ return; }
+  try{
+    const {item}=await apiPost('/api/create',{target:'daily',title,date:viewDayStr()});
+    DATA.daily=DATA.daily||[]; DATA.daily.push(item); inp.value=''; renderDaily(); toast('已添加 ✓');
+  }catch(e){ toast('添加失败'); console.error(e); }
+}
+document.getElementById('todoAddBtn').addEventListener('click',addTodo);
+document.getElementById('todoInput').addEventListener('keydown',e=>{ if(e.key==='Enter') addTodo(); });
+// 步骤拖进今日待办区(输入行 + 列表都可作落点;只认 kind='step')
+[document.querySelector('.todo-add'), document.getElementById('todoList')].forEach(z=>{ if(!z) return;
+  z.addEventListener('dragover',e=>{ if(dragged&&dragged.kind==='step'){ e.preventDefault(); z.classList.add('todo-drop-over'); } });
+  z.addEventListener('dragleave',()=>z.classList.remove('todo-drop-over'));
+  z.addEventListener('drop',e=>{ z.classList.remove('todo-drop-over');
+    if(!dragged||dragged.kind!=='step') return; e.preventDefault();
+    addStepTodo({text:dragged.text,blockId:dragged.blockId,monthlyId:dragged.monthlyId}); });
+});
+document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); renderBooks(btn.dataset.tab);
+}));
+
+/* ============ 图表(懒加载) ============ */
+/* ---- ISO 周 + 月度甘特(自建,可拖动排期) ---- */
+function fmtDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function isoWeekLabelJS(dateStr){
+  const d=new Date(dateStr+'T00:00:00Z'); const day=(d.getUTCDay()+6)%7; d.setUTCDate(d.getUTCDate()-day+3);
+  const y=d.getUTCFullYear(); const ft=new Date(Date.UTC(y,0,4)); const fd=(ft.getUTCDay()+6)%7; ft.setUTCDate(ft.getUTCDate()-fd+3);
+  const wk=1+Math.round((d-ft)/(6.048e8)); return String(y).slice(2)+'W'+String(wk).padStart(2,'0');
+}
+/* ---- 月/周/日视图导航状态(默认今天;‹ 今 › 切换,只从内存重渲不 fetch) ---- */
+const mondayOf=d=>{ const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()); x.setDate(x.getDate()-(x.getDay()+6)%7); return x; };
+let viewMonth=(()=>{ const n=new Date(); return new Date(n.getFullYear(),n.getMonth(),1); })();
+let viewWeek=mondayOf(new Date());
+let viewDay=(()=>{ const n=new Date(); return new Date(n.getFullYear(),n.getMonth(),n.getDate()); })();
+const viewMonthStr=()=>viewMonth.getFullYear()+'-'+String(viewMonth.getMonth()+1).padStart(2,'0');
+const viewDayStr=()=>fmtDate(viewDay);
+const isViewDayToday=()=>viewDayStr()===todayStr();
+// 该周标题:按周四定所属月,第N周=ceil(周四日/7)
+function weekTitleOf(mon){
+  const th=new Date(mon); th.setDate(mon.getDate()+3);
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+  return { title:`${th.getFullYear()}年${th.getMonth()+1}月 第${Math.ceil(th.getDate()/7)}周`,
+    rng:`${mon.getMonth()+1}/${mon.getDate()} – ${sun.getMonth()+1}/${sun.getDate()}` };
+}
+function updateTimeHeads(){
+  const mT=document.getElementById('mTitle'); if(mT) mT.textContent=`${viewMonth.getFullYear()} 年 ${viewMonth.getMonth()+1} 月`;
+  const wt=weekTitleOf(viewWeek);
+  const wT=document.getElementById('wTitle'); if(wT) wT.textContent=wt.title;
+  const wS=document.getElementById('wSub'); if(wS) wS.textContent=wt.rng+' · 拖条改时间 · 勾选写回';
+  const wd=['日','一','二','三','四','五','六'][viewDay.getDay()];
+  const dT=document.getElementById('dTitle'); if(dT) dT.textContent=`${viewDay.getFullYear()}年${viewDay.getMonth()+1}月${viewDay.getDate()}日 · 星期${wd}`;
+  const dn=document.getElementById('dayNum'); if(dn) dn.textContent=String(viewDay.getMonth()+1).padStart(2,'0')+'/'+String(viewDay.getDate()).padStart(2,'0');
+  const dm=document.getElementById('dayMeta'); if(dm) dm.innerHTML='星期'+wd+(isViewDayToday()?' · 本周焦点见下':' · 非今日,点「今」回到今天');
+  const th=document.getElementById('todoH2'); if(th) th.textContent=(isViewDayToday()?'今日待办':`${viewDay.getMonth()+1}/${viewDay.getDate()} 待办`)+' · 可增删打勾';
+}
+function shiftView(kind, delta){
+  const today=new Date(); const t0=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+  if(delta===0){ // 「今」:全部复位
+    viewMonth=new Date(today.getFullYear(),today.getMonth(),1); viewWeek=mondayOf(t0); viewDay=t0;
+  }else if(kind==='month'){
+    viewMonth=new Date(viewMonth.getFullYear(),viewMonth.getMonth()+delta,1);
+    // 粗→细级联:该月含今天则锚回今天,否则锚到该月1号
+    const inMon=t0.getFullYear()===viewMonth.getFullYear()&&t0.getMonth()===viewMonth.getMonth();
+    viewDay=inMon?t0:new Date(viewMonth); viewWeek=mondayOf(viewDay);
+  }else if(kind==='week'){
+    viewWeek=new Date(viewWeek); viewWeek.setDate(viewWeek.getDate()+7*delta);
+    const sun=new Date(viewWeek); sun.setDate(viewWeek.getDate()+6);
+    viewDay=(t0>=viewWeek&&t0<=sun)?t0:new Date(viewWeek);
+    viewMonth=new Date(viewDay.getFullYear(),viewDay.getMonth(),1);
+  }else if(kind==='day'){
+    viewDay=new Date(viewDay); viewDay.setDate(viewDay.getDate()+delta);
+    viewWeek=mondayOf(viewDay); viewMonth=new Date(viewDay.getFullYear(),viewDay.getMonth(),1);
+  }
+  updateTimeHeads();
+  renderMonthly(); renderGantt('gantt','month');
+  renderGantt('weekGantt','week'); refreshWeekCards();
+  renderDaily(); renderDayPage();
+}
+// 甘特任务排序:手动拖过的(排序号)优先,没拖过的按优先级(同级保持原顺序)
+function ganttSortTasks(arr){
+  const pOrd=p=>({P0:0,P1:1,P2:2}[p]??3);
+  return arr.slice().sort((a,c)=>{
+    const ao=a.ord!=null, co=c.ord!=null;
+    if(ao&&co) return a.ord-c.ord;
+    if(ao!==co) return ao?-1:1;
+    return pOrd(a.pr)-pOrd(c.pr);
+  });
+}
+// 甘特范围:month=视图月;week=视图周(周一起7天)。用绝对日期,跨月安全
+function ganttBounds(mode){
+  if(mode==='week') return {start:new Date(viewWeek), days:7, mode:'week'};
+  return {start:new Date(viewMonth), days:new Date(viewMonth.getFullYear(),viewMonth.getMonth()+1,0).getDate(), mode:'month'};
+}
+function dateAtIndex(b,i){ const d=new Date(b.start); d.setDate(b.start.getDate()+i); return fmtDate(d); }
+function idxRaw(b,dateStr){ const d=new Date(dateStr+'T00:00:00');
+  return Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate())-new Date(b.start.getFullYear(),b.start.getMonth(),b.start.getDate()))/864e5); }
+function indexOfDate(b,dateStr){ return Math.max(0,Math.min(idxRaw(b,dateStr),b.days-1)); }
+// 排期相关改动后统一重渲(两个甘特 + 周卡 + mlist 的"已排N")
+function rerenderScheduling(){
+  renderGantt('gantt','month');
+  if(document.getElementById('weekGantt')) renderGantt('weekGantt','week');
+  refreshWeekCards(); renderMonthly();
+}
+
+/* ---- 步骤子甘特:点任务条/标签展开,步骤条在父条范围内编排(日期存待办文字尾部 📅 标记) ---- */
+const ganttOpenSet=new Set();          // 展开步骤的任务条(weekly id)集合,可多开
+const STEP_CACHE={};                   // monthlyId → steps数组 | 'error'
+const STEP_INFLIGHT={};                // 拉取去重
+const taskColor=w=>w.type==='工作'?'#e8833a':'#3b82d6';
+const fmtMD=d=>{ const p=(d||'').split('-'); return (+p[1])+'/'+(+p[2]); };
+// 月/周两个甘特都重渲(步骤状态两处共享)
+function rerenderGantts(){ renderGantt('gantt','month'); if(document.getElementById('weekGantt')) renderGantt('weekGantt','week'); }
+async function loadSteps(mid){
+  if(STEP_INFLIGHT[mid]) return;
+  STEP_INFLIGHT[mid]=true;
+  try{ const r=await apiGet('/api/steps?pageId='+mid); STEP_CACHE[mid]=r.steps||[]; }
+  catch(e){ console.error(e); if(!Array.isArray(STEP_CACHE[mid])) STEP_CACHE[mid]='error'; }
+  finally{ delete STEP_INFLIGHT[mid]; }
+  rerenderGantts();
+}
+function toggleGanttSteps(w){
+  if(!w.monthlyId){ toast('该任务没有关联月度任务,无步骤'); return; }
+  if(ganttOpenSet.has(w.id)){ ganttOpenSet.delete(w.id); }
+  else{ ganttOpenSet.add(w.id); if(Array.isArray(STEP_CACHE[w.monthlyId])) loadSteps(w.monthlyId); } // 有旧缓存先渲染,后台刷新
+  rerenderGantts();
+}
+function subRowsHtml(w,b){
+  const msgRow=m=>`<div class="mg-row mg-sub"><div class="mg-label mg-sublabel"></div><div class="mg-track mg-subtrack"><span class="mg-submsg">${m}</span></div></div>`;
+  const addRow=`<div class="mg-row mg-sub mg-addrow"><div class="mg-label mg-sublabel"><input class="mg-addinp" data-wadd="${w.id}" placeholder="＋ 步骤,回车添加"></div><div class="mg-track mg-subtrack"></div></div>`;
+  const st=STEP_CACHE[w.monthlyId];
+  if(st==='error') return msgRow(`加载失败 · <span class="mg-retry" data-retrymid="${w.monthlyId}">点此重试</span>`);
+  if(!Array.isArray(st)){ loadSteps(w.monthlyId); return msgRow('加载步骤中…'); }
+  if(!st.length) return addRow;
+  const pS=indexOfDate(b,w.s), pE=indexOfDate(b,w.e), col=taskColor(w);
+  return st.map(s=>{
+    let bar='';
+    if(s.s&&s.e){
+      const rs=idxRaw(b,s.s), re=idxRaw(b,s.e);
+      if(re<0||rs>b.days-1){ // 完全在本窗口网格外:只读指示块,防止一碰改写日期
+        const edge=re<0?0:b.days-1;
+        bar=`<div class="mg-sbar ro" style="left:${edge/b.days*100}%;width:${100/b.days}%;background:${col}" title="${esc(s.text)} · 排期 ${s.s}→${s.e}(本窗口外)"></div>`;
+      }else if(rs<0||re>b.days-1){ // 部分越窗:按裁剪位置只读显示,防拖动改写真实日期
+        const si=indexOfDate(b,s.s), ei=indexOfDate(b,s.e);
+        bar=`<div class="mg-sbar ro" style="left:${si/b.days*100}%;width:${Math.max((ei-si+1)/b.days*100,100/b.days)}%;background:${s.checked?'var(--green)':col}" title="${esc(s.text)} · ${s.s}→${s.e}(超出本窗口,编排请到月度甘特图)"></div>`;
+      }else{
+        const si=indexOfDate(b,s.s), ei=indexOfDate(b,s.e);
+        const handles=(ei-si)>=1;
+        bar=`<div class="mg-sbar${s.checked?' done':''}" data-bid="${s.id}" style="left:${si/b.days*100}%;width:${Math.max((ei-si+1)/b.days*100,100/b.days)}%;background:${s.checked?'var(--green)':col}"
+          title="${esc(s.text)} · ${s.s}→${s.e}">${handles?'<span class="mg-h l"></span><span class="mg-h r"></span>':''}<span class="sx" title="取消排期">×</span></div>`;
+      }
+    }else{ // 未排期:幽灵条铺满父条范围;点击=整段落定,拖动/拖两端=调整后落定
+      bar=`<div class="mg-sbar ghost" data-bid="${s.id}" style="left:${pS/b.days*100}%;width:${Math.max((pE-pS+1)/b.days*100,100/b.days)}%;border-color:${col}"
+        title="${esc(s.text)} · 未排期:点击=按整段排期,拖动/拖两端=调整"><span class="mg-h l"></span><span class="mg-h r"></span></div>`;
+    }
+    return `<div class="mg-row mg-sub${s.checked?' done':''}" data-wsub="${w.id}"><div class="mg-label mg-sublabel"><input type="checkbox" class="scb" data-bid="${s.id}" ${s.checked?'checked':''}><span class="st" title="${esc(s.text)}">${esc(s.text)}</span><span class="sedit" data-bid="${s.id}" title="修改步骤名称">✎</span><span class="sdel" data-bid="${s.id}" title="删除步骤">×</span></div><div class="mg-track mg-subtrack">${bar}</div></div>`;
+  }).join('')+addRow;
+}
+
+function renderGantt(containerId, mode){
+  const el=document.getElementById(containerId); if(!el) return;
+  const b=ganttBounds(mode); const isMonth = mode==='month';
+  let tasks=DATA.weekly.filter(w=>w.s&&w.e);
+  { const s0=fmtDate(b.start), e0=dateAtIndex(b,b.days-1); tasks=tasks.filter(w=>w.s<=e0 && w.e>=s0); } // 只显示与本窗口重叠的任务(月/周同口径)
+  tasks=ganttSortTasks(tasks);
+
+  const every = mode==='week'?1:5;
+  const ticks=[]; for(let d=0; d<b.days; d++){ if(d===0||(d+1)%every===0||d===b.days-1){ const dt=new Date(b.start); dt.setDate(b.start.getDate()+d);
+    ticks.push(`<span class="mg-tick" style="left:${d/b.days*100}%">${dt.getMonth()+1}/${dt.getDate()}</span>`); } }
+  const tRaw=idxRaw(b,fmtDate(new Date())); const todayLine=(tRaw>=0&&tRaw<b.days)?`<span class="mg-today" style="left:${(tRaw+0.5)/b.days*100}%"></span>`:'';
+  let html=`<div class="mg-row mg-headrow"><div class="mg-label"></div><div class="mg-track mg-axis">${ticks.join('')}${todayLine}</div></div>`;
+  if(!tasks.length) html+=`<div class="mg-row"><div class="mg-label"></div><div class="mg-track"><span style="color:var(--text3);font-size:12px;padding-left:8px">${mode==='week'?'本周暂无排期':'暂无排期'}</span></div></div>`;
+  html+=tasks.map(w=>{
+    const rawS=idxRaw(b,w.s), rawE=idxRaw(b,w.e);
+    const clip=rawS<0||rawE>b.days-1;   // 真实日期超出本窗口:只读防止拖动把日期改写成裁剪值
+    const si=indexOfDate(b,w.s), ei=indexOfDate(b,w.e);
+    const left=si/b.days*100, width=Math.max((ei-si+1)/b.days*100, 100/b.days);
+    const col=taskColor(w);
+    const open=ganttOpenSet.has(w.id) && w.monthlyId;
+    const caret=w.monthlyId?`<span class="mg-caret${open?' open':''}">▸</span>`:'<span class="mg-caret" style="visibility:hidden">▸</span>';
+    const tip=clip?`${w.s}→${w.e}(超出本窗口,改期请到月度甘特图)`:`${w.s}→${w.e} · 拖动改期`;
+    let row=`<div class="mg-row${open?' mg-rowopen':''}" data-rowwid="${w.id}"><div class="mg-label${w.monthlyId?' haskids':''}" data-wlabel="${w.id}" draggable="true" title="${esc(w.t)} · 点击展开步骤 · 上下拖动调整顺序">${caret}<span class="lt">${esc(w.t)}</span><span class="lux" data-lux="${w.id}" title="退回规划池(取消这条排期)">×</span></div>
+      <div class="mg-track"><div class="mg-bar${clip?' clip':''}${open?' mg-openbar':''}" data-wid="${w.id}" style="left:${left}%;width:${width}%;background:${col}"
+        title="${esc(w.t)} · ${tip} · 点击展开步骤">${clip?'':'<span class="mg-h l"></span>'}<span class="mg-txt">${w.pr||''}</span>${clip?'':'<span class="mg-h r"></span>'}<span class="wux" title="退回规划池(取消这条排期)">↩</span></div></div></div>`;
+    if(open) row+=subRowsHtml(w,b);
+    return row;
+  }).join('');
+  if(isMonth) html+=`<div class="mg-row mg-droprow"><div class="mg-label"></div><div class="mg-track mg-drop">${todayLine}<span class="mg-drophint">⬆ 从下方"月度计划规划池"拖任务到此排期(默认3天,可拖动调整)</span></div></div>`;
+  el.innerHTML=html;
+  bindGantt(el, b, isMonth); bindSubRows(el, b);
+}
+function bindGantt(el, b, isMonth){
+  const axis=el.querySelector('.mg-axis');
+  const geom=()=>{ const r=axis.getBoundingClientRect(); return {left:r.left, dayW:r.width/b.days}; };
+  el.querySelectorAll('.mg-bar').forEach(bar=>{
+    const wid=bar.dataset.wid, w=DATA.weekly.find(x=>x.id===wid); if(!w) return;
+    const wux=bar.querySelector('.wux');   // ↩ 退回规划池(clip 只读条也可退)
+    if(wux){ wux.addEventListener('pointerdown',e=>e.stopPropagation());
+      wux.addEventListener('click',e=>{ e.stopPropagation(); unscheduleBar(wid); }); }
+    if(bar.classList.contains('clip')){ bar.addEventListener('click',()=>toggleGanttSteps(w)); return; } // 越窗条:只可点击展开,不可拖
+    let mode=null, startX=0, origS=0, origE=0, moved=false;
+    const down=(e,m)=>{ mode=m; moved=false; startX=e.clientX; origS=indexOfDate(b,w.s); origE=indexOfDate(b,w.e);
+      bar._s=origS; bar._e=origE; e.preventDefault(); e.stopPropagation();
+      document.addEventListener('pointermove',move); document.addEventListener('pointerup',up); };
+    const move=(e)=>{ if(mode===null) return; if(Math.abs(e.clientX-startX)>4) moved=true;
+      const g=geom(); const delta=Math.round((e.clientX-startX)/g.dayW);
+      let s=origS, en=origE;
+      if(mode==='move'){ const span=origE-origS; s=origS+delta; s=Math.max(0,Math.min(s,b.days-1-span)); en=s+span; }
+      else if(mode==='l'){ s=Math.max(0,Math.min(origS+delta,origE)); en=origE; }
+      else if(mode==='r'){ en=Math.max(origS,Math.min(origE+delta,b.days-1)); s=origS; }
+      bar.style.left=(s/b.days*100)+'%'; bar.style.width=((en-s+1)/b.days*100)+'%'; bar._s=s; bar._e=en; };
+    const up=async()=>{ document.removeEventListener('pointermove',move); document.removeEventListener('pointerup',up);
+      if(mode===null) return; const wasMode=mode; mode=null;
+      if(!moved){ if(wasMode==='move') toggleGanttSteps(w); return; }  // 没拖动=点击→展开步骤(手柄点击忽略);toggle 后 bar 已销毁,直接返回
+      const ns=dateAtIndex(b,bar._s), ne=dateAtIndex(b,bar._e);
+      if(ns===w.s && ne===w.e) return;                                 // 拖出去又拖回原位=不提交也不展开
+      const oS=w.s,oE=w.e,oW=w.w; w.s=ns; w.e=ne; w.w=isoWeekLabelJS(ns);
+      try{ await apiPost('/api/set-weekly-schedule',{pageId:wid,start:ns,end:ne}); rerenderScheduling(); toast('已改期 ✓'); }
+      catch(err){ console.error(err); w.s=oS;w.e=oE;w.w=oW; await reload().catch(()=>{}); toast('网络波动,已同步'); } };
+    bar.addEventListener('pointerdown',e=>{ if(e.button===0) down(e,'move'); });
+    const hl=bar.querySelector('.mg-h.l'); if(hl) hl.addEventListener('pointerdown',e=>{ if(e.button===0) down(e,'l'); });
+    const hr=bar.querySelector('.mg-h.r'); if(hr) hr.addEventListener('pointerdown',e=>{ if(e.button===0) down(e,'r'); });
+  });
+  // 标签也可点击展开(给 1 天窄条一个大点击区);标题旁 × = 退回规划池
+  el.querySelectorAll('.mg-label.haskids').forEach(lab=>{
+    lab.addEventListener('click',()=>{ const w=DATA.weekly.find(x=>x.id===lab.dataset.wlabel); if(w) toggleGanttSteps(w); });
+  });
+  el.querySelectorAll('[data-lux]').forEach(x=>{
+    x.addEventListener('pointerdown',e=>e.stopPropagation());
+    x.addEventListener('click',e=>{ e.stopPropagation(); unscheduleBar(x.dataset.lux); });
+  });
+  // 行上下拖动排序:拖左侧标签,松手落到目标行上/下半区 = 插到它前/后
+  el.querySelectorAll('.mg-row[data-rowwid]').forEach(row=>{
+    const lab=row.querySelector('.mg-label');
+    lab.addEventListener('dragstart',()=>{ dragged={kind:'ganttrow', id:row.dataset.rowwid}; row.classList.add('rowdrag'); });
+    lab.addEventListener('dragend',()=>{ row.classList.remove('rowdrag'); dragged=null;
+      el.querySelectorAll('.rowover-b,.rowover-a').forEach(r=>r.classList.remove('rowover-b','rowover-a')); });
+    row.addEventListener('dragover',e=>{ if(!dragged||dragged.kind!=='ganttrow') return; e.preventDefault();
+      const r=row.getBoundingClientRect(); const before=e.clientY < r.top+r.height/2;
+      row.classList.toggle('rowover-b',before); row.classList.toggle('rowover-a',!before); });
+    row.addEventListener('dragleave',()=>row.classList.remove('rowover-b','rowover-a'));
+    row.addEventListener('drop',e=>{ row.classList.remove('rowover-b','rowover-a');
+      if(!dragged||dragged.kind!=='ganttrow') return; e.preventDefault();
+      const r=row.getBoundingClientRect(); const before=e.clientY < r.top+r.height/2;
+      reorderGanttRow(dragged.id, row.dataset.rowwid, before); });
+  });
+  // 从规划池拖任务进来建周任务的 drop 区(仅月甘特,周页没有拖源):排除步骤子行,防误建
+  if(!isMonth) return;
+  el.querySelectorAll('.mg-track:not(.mg-subtrack)').forEach(track=>{
+    track.addEventListener('dragover',e=>{ if(dragged&&dragged.kind==='monthly'){ e.preventDefault(); track.classList.add('mg-over'); } });
+    track.addEventListener('dragleave',()=>track.classList.remove('mg-over'));
+    track.addEventListener('drop',async e=>{ track.classList.remove('mg-over');
+      if(!dragged||dragged.kind!=='monthly') return; e.preventDefault();
+      const exist=DATA.weekly.find(x=>x.monthlyId===dragged.id);
+      if(exist){ toast(`该任务已排在 ${exist.s}→${exist.e},一个任务只排一条;拖那条改时间,细分放步骤里`); return; }
+      const g=geom(); let day=Math.floor((e.clientX-g.left)/g.dayW); day=Math.max(0,Math.min(day,b.days-1));
+      const endDay=Math.min(day+2,b.days-1);
+      const start=dateAtIndex(b,day), end=dateAtIndex(b,endDay);
+      const info={id:dragged.id,name:dragged.name,type:dragged.type,pr:dragged.pr};
+      try{ const {item}=await apiPost('/api/create',{target:'weekly',title:info.name,type:info.type,priority:info.pr,monthlyId:info.id,start,end});
+        DATA.weekly.push(item); rerenderScheduling(); toast('已排期 ✓'); }
+      catch(err){ console.error(err); await reload().catch(()=>{}); rerenderScheduling(); toast('网络波动,已同步'); } });
+  });
+}
+// 退回规划池:归档该排期条;任务仍在规划池(变回未排,可重新拖入),步骤不受影响
+async function unscheduleBar(wid){
+  const w=DATA.weekly.find(x=>x.id===wid); if(!w) return;
+  if(!confirm(`把「${w.t}」退回规划池?\n将移除这条排期(${w.s}→${w.e}),任务仍在规划池可重新拖入甘特图;步骤不受影响。`)) return;
+  try{
+    await apiPost('/api/delete',{pageId:wid});
+    const k=DATA.weekly.indexOf(w); if(k>=0) DATA.weekly.splice(k,1);
+    ganttOpenSet.delete(wid);
+    rerenderScheduling(); toast('已退回规划池,可重新排期 ✓');
+  }catch(err){ console.error(err); await reload().catch(()=>{}); toast('网络波动,已同步'); }
+}
+// 行排序持久化:以全量任务的当前排序为基准重编号(排序号写周计划库「排序」number),只写有变化的
+async function reorderGanttRow(srcId, tgtId, before){
+  if(srcId===tgtId) return;
+  const list=ganttSortTasks(DATA.weekly.filter(w=>w.s&&w.e));
+  const src=list.find(w=>w.id===srcId); if(!src) return;
+  const without=list.filter(w=>w.id!==srcId);
+  let idx=without.findIndex(w=>w.id===tgtId); if(idx<0) return;
+  if(!before) idx+=1;
+  without.splice(idx,0,src);
+  const changes=[];
+  without.forEach((w,i)=>{ const no=(i+1)*10; if(w.ord!==no){ w.ord=no; changes.push(w); } });
+  rerenderGantts();
+  let fail=0;
+  for(const w of changes){
+    try{ await apiPost('/api/update',{pageId:w.id,property:'排序',propType:'number',value:w.ord}); }
+    catch(e){ console.error(e); fail++; }
+  }
+  if(fail){ await reload().catch(()=>{}); toast('部分顺序未保存,已同步最新状态'); }
+  else if(changes.length) toast('顺序已保存 ✓');
+}
+// 步骤子行交互:复选框勾选、×删除、底部添加、步骤条拖动/两端改时长/×取消、加载重试(逐行作用域,支持多任务同时展开)
+function bindSubRows(el, b){
+  el.querySelectorAll('.mg-retry').forEach(rt=>rt.addEventListener('click',()=>{ delete STEP_CACHE[rt.dataset.retrymid]; rerenderGantts(); }));
+  // 底部"添加步骤"输入行
+  el.querySelectorAll('.mg-addinp').forEach(inp=>{
+    inp.addEventListener('pointerdown',e=>e.stopPropagation());
+    inp.addEventListener('keydown',async e=>{
+      if(e.key!=='Enter') return;
+      const w=DATA.weekly.find(x=>x.id===inp.dataset.wadd); if(!w||!w.monthlyId) return;
+      const text=inp.value.trim(); if(!text) return;
+      inp.disabled=true;
+      try{ const r=await apiPost('/api/step-add',{pageId:w.monthlyId,text});
+        const arr=STEP_CACHE[w.monthlyId];
+        if(Array.isArray(arr)) arr.push({id:r.step.id,text,checked:false,s:null,e:null});
+        else STEP_CACHE[w.monthlyId]=[{id:r.step.id,text,checked:false,s:null,e:null}];
+        const m=DATA.monthly.find(x=>x.id===w.monthlyId);
+        if(m){ m.p=r.percent; m.stepTotal=r.total; renderMonthly(); }
+        rerenderGantts(); updateTaskProgressUI(w.monthlyId); toast('步骤已添加,幽灵条点击/拖动即可排期');
+        const ni=el.querySelector(`.mg-addinp[data-wadd="${w.id}"]`); if(ni) ni.focus(); }
+      catch(err){ console.error(err); inp.disabled=false; toast('添加失败,请重试'); }
+    });
+  });
+  const axis=el.querySelector('.mg-axis');
+  const geom=()=>{ const r=axis.getBoundingClientRect(); return {left:r.left, dayW:r.width/b.days}; };
+  el.querySelectorAll('.mg-row.mg-sub[data-wsub]').forEach(row=>{
+    const w=DATA.weekly.find(x=>x.id===row.dataset.wsub); if(!w||!w.monthlyId) return;
+    const steps=STEP_CACHE[w.monthlyId]; if(!Array.isArray(steps)) return;
+    const pS=indexOfDate(b,w.s), pE=indexOfDate(b,w.e);
+    // ✎ 改名:文本原地变输入框(悬停显示)
+    const sed=row.querySelector('.mg-sublabel .sedit');
+    if(sed){ sed.addEventListener('pointerdown',e=>e.stopPropagation());
+      sed.addEventListener('click',e=>{ e.stopPropagation();
+        const s=steps.find(x=>x.id===sed.dataset.bid); if(!s) return;
+        const span=row.querySelector('.mg-sublabel .st');
+        inlineEditText(span, s.text, text=>renameStepCommit(w.monthlyId, s.id, text)); });
+    }
+    // × 删除步骤(悬停显示)
+    const del=row.querySelector('.mg-sublabel .sdel');
+    if(del){ del.addEventListener('pointerdown',e=>e.stopPropagation());
+      del.addEventListener('click',async e=>{ e.stopPropagation();
+        const s=steps.find(x=>x.id===del.dataset.bid); if(!s) return;
+        if(!confirm('删除步骤「'+s.text+'」?')) return;
+        try{ const r=await apiPost('/api/step-delete',{pageId:w.monthlyId,blockId:s.id});
+          const k=steps.indexOf(s); if(k>=0) steps.splice(k,1);
+          const m=DATA.monthly.find(x=>x.id===w.monthlyId);
+          if(m){ m.p=r.percent; m.stepTotal=r.total; renderMonthly(); }
+          rerenderGantts(); updateTaskProgressUI(w.monthlyId); toast('步骤已删除'); }
+        catch(err){ console.error(err); await reload().catch(()=>{}); toast('网络波动,已同步'); }
+      });
+    }
+    // 勾选步骤 → step-toggle → 同步月度完成度 + 今日待办
+    const cb=row.querySelector('.mg-sublabel .scb');
+    if(cb){
+      cb.addEventListener('pointerdown',e=>e.stopPropagation());
+      cb.addEventListener('change',async ()=>{
+        const s=steps.find(x=>x.id===cb.dataset.bid); if(!s) return;
+        const old=s.checked; s.checked=cb.checked; rerenderGantts();
+        try{ const r=await apiPost('/api/step-toggle',{pageId:w.monthlyId,blockId:s.id,checked:s.checked});
+          const m=DATA.monthly.find(x=>x.id===w.monthlyId);
+          if(m){ m.p=r.percent; m.stepTotal=r.total; renderMonthly(); }
+          updateTaskProgressUI(w.monthlyId);
+          syncDailyFromStep(s.id, s.checked); }
+        catch(err){ console.error(err); s.checked=old; rerenderGantts(); toast('网络波动,请重试'); }
+      });
+    }
+    // 步骤条:拖动/两端手柄/×;clamp 规则:当前范围在父条内→限父条,已在父条外(历史数据)→只限网格
+    const bar=row.querySelector('.mg-sbar');
+    if(!bar||bar.classList.contains('ro')) return;
+    const s=steps.find(x=>x.id===bar.dataset.bid); if(!s) return;
+    const isGhost=bar.classList.contains('ghost');
+    const sx=bar.querySelector('.sx');
+    if(sx){ sx.addEventListener('pointerdown',e=>e.stopPropagation());
+      sx.addEventListener('click',async e=>{ e.stopPropagation();
+        const oS=s.s,oE=s.e; s.s=null; s.e=null; rerenderGantts();
+        try{ await apiPost('/api/step-schedule',{pageId:w.monthlyId,blockId:s.id,start:null,end:null}); toast('已取消排期'); }
+        catch(err){ console.error(err); s.s=oS; s.e=oE; rerenderGantts(); toast('网络波动,请重试'); } });
+    }
+    const curS=s.s?indexOfDate(b,s.s):pS, curE=s.e?indexOfDate(b,s.e):pE;
+    const inParent=curS>=pS && curE<=pE;
+    const loB=inParent?pS:0, hiB=inParent?pE:b.days-1;
+    let mode=null, startX=0, origS=0, origE=0, moved=false;
+    const curSNow=()=>s.s?indexOfDate(b,s.s):pS, curENow=()=>s.e?indexOfDate(b,s.e):pE;
+    const down=(e,m)=>{ mode=m; moved=false; startX=e.clientX; origS=curSNow(); origE=curENow();
+      bar._s=origS; bar._e=origE; e.preventDefault(); e.stopPropagation();
+      document.addEventListener('pointermove',move); document.addEventListener('pointerup',up); };
+    const move=(e)=>{ if(mode===null) return; if(Math.abs(e.clientX-startX)>4) moved=true;
+      const g=geom(); const delta=Math.round((e.clientX-startX)/g.dayW);
+      let ss=origS, ee=origE;
+      if(mode==='move'){ const span=origE-origS; ss=Math.max(loB,Math.min(origS+delta,hiB-span)); ee=ss+span; }
+      else if(mode==='l'){ ss=Math.max(loB,Math.min(origS+delta,origE)); }
+      else if(mode==='r'){ ee=Math.max(origS,Math.min(origE+delta,hiB)); }
+      bar.style.left=(ss/b.days*100)+'%'; bar.style.width=((ee-ss+1)/b.days*100)+'%'; bar._s=ss; bar._e=ee; };
+    const up=async()=>{ document.removeEventListener('pointermove',move); document.removeEventListener('pointerup',up);
+      if(mode===null) return; const wasMode=mode; mode=null;
+      const ns=dateAtIndex(b,bar._s), ne=dateAtIndex(b,bar._e);
+      if(!isGhost && ns===s.s && ne===s.e) return;            // 已排期条没变化=不提交
+      if(isGhost && wasMode!=='move' && !moved) return;       // 幽灵条手柄点了没动=不提交(点条身=整段落定)
+      const oS=s.s,oE=s.e; s.s=ns; s.e=ne; rerenderGantts();
+      try{ await apiPost('/api/step-schedule',{pageId:w.monthlyId,blockId:s.id,start:ns,end:ne}); toast('步骤已排期 ✓'); }
+      catch(err){ console.error(err); s.s=oS; s.e=oE; rerenderGantts(); toast('网络波动,请重试'); } };
+    bar.addEventListener('pointerdown',e=>{ if(e.button===0) down(e,'move'); });
+    const hl=bar.querySelector('.mg-h.l'); if(hl) hl.addEventListener('pointerdown',e=>{ if(e.button===0) down(e,'l'); });
+    const hr=bar.querySelector('.mg-h.r'); if(hr) hr.addEventListener('pointerdown',e=>{ if(e.button===0) down(e,'r'); });
+  });
+}
+function refreshWeekCards(){
+  const mon=new Date(viewWeek);
+  const rng=(m)=>{ const s=new Date(m), e=new Date(m); e.setDate(m.getDate()+6);
+    return (s.getMonth()+1)+'/'+s.getDate()+' – '+(e.getMonth()+1)+'/'+e.getDate(); };
+  const label=isoWeekLabelJS(fmtDate(mon));
+  const isCur=fmtDate(mon)===fmtDate(mondayOf(new Date()));
+  document.getElementById('w27h').innerHTML=`${isCur?'本周 ':''}${label} <span class="rng">${rng(mon)}</span>`;
+  weekCol('w27',label);
+}
+
+/* ============ 导航 ============ */
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nav').forEach(n=>n.classList.remove('on'));
+  document.getElementById('page-'+id).classList.add('on');
+  document.querySelector('.nav[data-page="'+id+'"]').classList.add('on');
+  if(id==='week') renderGantt('weekGantt','week');
+  if(id==='month') renderGantt('gantt','month');
+  window.scrollTo({top:0});
+}
+document.querySelectorAll('.nav').forEach(n=>n.addEventListener('click',()=>showPage(n.dataset.page)));
+// 时间导航 ‹ 今 › (月/周/日)
+document.querySelectorAll('[data-nav]').forEach(b=>b.addEventListener('click',()=>{
+  const [kind,delta]=b.dataset.nav.split(':');
+  shiftView(kind, +delta);
+}));
+document.querySelectorAll('[data-goto]').forEach(c=>c.addEventListener('click',()=>showPage(c.dataset.goto)));
+document.getElementById('refreshBtn').addEventListener('click',async()=>{
+  document.getElementById('refreshBtn').textContent='↻ 拉取中…';
+  try{ await loadData(); renderAll(); toast('已刷新'); }
+  catch(e){ toast('刷新失败'); }
+  document.getElementById('refreshBtn').textContent='↻ 重新拉取';
+});
+
+/* ============ 启动 / 登录 ============ */
+async function boot(){
+  try{
+    await loadData();
+    document.getElementById('loading').style.display='none';
+    document.getElementById('app').style.display='flex';
+    renderAll();
+  }catch(e){
+    if(e && e.code===401){ // 需要口令
+      document.getElementById('loading').style.display='none';
+      document.getElementById('gate').style.display='flex';
+      document.getElementById('gatePw').focus();
+    }else{
+      document.getElementById('loading').textContent='加载失败:'+(e.message||e);
+    }
+  }
+}
+document.getElementById('gateBtn').addEventListener('click',async()=>{
+  const pw=document.getElementById('gatePw').value.trim();
+  sessionStorage.setItem(KEYK,pw);
+  try{
+    await loadData();
+    document.getElementById('gate').style.display='none';
+    document.getElementById('app').style.display='flex';
+    renderAll();
+  }catch(e){ document.getElementById('gateErr').textContent='口令错误或服务异常'; }
+});
+document.getElementById('gatePw').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('gateBtn').click();});
+
+boot();
+</script>
+</body>
+</html>

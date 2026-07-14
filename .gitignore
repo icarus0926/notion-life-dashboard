@@ -1,0 +1,5 @@
+node_modules/
+.env
+__td.json
+*.log
+部署说明.md
