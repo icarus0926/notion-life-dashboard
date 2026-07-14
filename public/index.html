@@ -71,7 +71,7 @@
   .books{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
   .book{padding:15px 17px}.book .bt{display:flex;align-items:center;gap:8px;margin-bottom:6px}
   .book .bn{font-weight:600;font-size:13.5px;flex:1}.book .list{font-size:12px;color:var(--text2);line-height:1.8}
-  #gantt{width:100%;height:430px}.donut{width:100%;height:200px}
+  .donut{width:100%;height:200px}
   .mlist{padding:6px 18px}
   .mrow{border-top:1px solid #f4f3f1}.mrow:first-child{border-top:none}
   .mitem{display:flex;align-items:center;gap:10px;padding:12px 0;cursor:pointer}
@@ -321,6 +321,9 @@
   .inline-edit{flex:1;min-width:100px;font-size:inherit;font-family:inherit;color:var(--text);
     padding:1px 7px;border:1px solid #9cc0e6;border-radius:6px;background:#fff}
   .inline-edit:focus{outline:none;box-shadow:0 0 0 2px rgba(59,130,214,.15)}
+  .src-tag{flex:none;font-size:10.5px;padding:0 6px;border-radius:8px;line-height:16px;margin-left:2px}
+  .src-tag.m{color:#2e7d4f;background:#e2f3e8}
+  .src-tag.w{color:#7a5ec2;background:#efe9fb}
   .dstep-addrow{cursor:default}
   .dstep-addrow:hover{background:transparent}
   .dstep-addinp{width:100%;max-width:280px;padding:3px 10px;border:1px dashed var(--border);border-radius:8px;
@@ -444,7 +447,8 @@
 
     <section class="page" id="page-week">
       <div class="phead"><h1><span id="wTitle">周计划</span><span class="tnav"><button class="tbtn" data-nav="week:-1" title="上一周">‹</button><button class="tbtn td" data-nav="week:0" title="回到当前">今</button><button class="tbtn" data-nav="week:1" title="下一周">›</button></span></h1><div class="sub" id="wSub">拖条改时间 · 勾选写回</div></div>
-      <h2><span class="bar" style="background:var(--orange)"></span>周计划甘特图 · 本周(拖条改时间 · 点条展开步骤)</h2>
+      <h2 style="display:flex;align-items:center"><span class="bar" style="background:var(--orange)"></span>周计划甘特图 · 本周(拖条改时间 · 点条展开步骤)
+        <button class="rollbtn" id="weekAddBtn" title="添加独立周任务(不进任务池,不上月度甘特图)">＋ 添加周任务</button></h2>
       <div class="card" style="padding:14px 12px"><div id="weekGantt" class="mgantt"></div></div>
       <div class="wcols">
         <div class="card wcol"><h3 id="w27h">本周</h3><div id="w27"></div></div>
@@ -481,6 +485,24 @@
     <div class="modal-foot">
       <button class="cancel" id="amCancel">取消</button>
       <button class="save" id="amOk">确认安排</button>
+    </div>
+  </div>
+</div>
+
+<!-- 添加独立周任务弹框 -->
+<div id="weekAddModal" class="modal-ov" hidden>
+  <div class="modal">
+    <h3>添加周任务</h3>
+    <div class="modal-lab">名称(独立周任务:不进任务池,不上月度甘特图)</div>
+    <input type="text" id="waName" class="em-inp" placeholder="例如:整理报销单">
+    <div class="modal-lab" style="margin-top:12px">类型</div>
+    <select id="waType" class="em-inp"><option>个人成长</option><option>工作</option></select>
+    <div class="modal-lab" style="margin-top:12px">优先级</div>
+    <select id="waPr" class="em-inp"><option>P0</option><option selected>P1</option><option>P2</option></select>
+    <div class="modal-lab" style="margin-top:12px;color:var(--text3)">日期默认为本视图周的前 3 天,创建后可在甘特图里拖动调整</div>
+    <div class="modal-foot">
+      <button class="cancel" id="waCancel">取消</button>
+      <button class="save" id="waOk">添加</button>
     </div>
   </div>
 </div>
@@ -751,6 +773,28 @@ async function rolloverUnfinished(){
   renderMonthly(); rerenderScheduling();
 }
 document.getElementById('rollBtn').addEventListener('click',rolloverUnfinished);
+/* ---- 添加独立周任务(无 monthlyId,不进任务池/月度甘特) ---- */
+function closeWeekAdd(){ document.getElementById('weekAddModal').hidden=true; }
+async function confirmWeekAdd(){
+  const title=document.getElementById('waName').value.trim();
+  if(!title){ toast('请填任务名'); return; }
+  const type=document.getElementById('waType').value, pr=document.getElementById('waPr').value;
+  const start=fmtDate(viewWeek), end=addDays(start,2);
+  closeWeekAdd();
+  try{
+    const {item}=await apiPost('/api/create',{target:'weekly',title,type,priority:pr,start,end});
+    DATA.weekly.push(item); rerenderScheduling(); toast('周任务已添加,可在甘特图拖动调整 ✓');
+  }catch(e){ console.error(e); await reload().catch(()=>{}); toast('网络波动,已同步'); }
+}
+document.getElementById('weekAddBtn').addEventListener('click',()=>{
+  document.getElementById('waName').value='';
+  document.getElementById('weekAddModal').hidden=false;
+  setTimeout(()=>document.getElementById('waName').focus(),30);
+});
+document.getElementById('waCancel').addEventListener('click',closeWeekAdd);
+document.getElementById('waOk').addEventListener('click',confirmWeekAdd);
+document.getElementById('waName').addEventListener('keydown',e=>{ if(e.key==='Enter') confirmWeekAdd(); });
+document.getElementById('weekAddModal').addEventListener('click',e=>{ if(e.target.id==='weekAddModal') closeWeekAdd(); });
 // 完成本月计划条目:归档月度条 + 关联任务池条目置已完成 → 移入已完成池
 async function completeMonthly(i){
   const m=DATA.monthly[i]; if(!m) return;
@@ -1068,7 +1112,7 @@ function weekRow(w){
     <div class="witem ${w.done?'checked':''}" data-id="${w.id}">
       ${canStep?`<span class="wstep-toggle" data-wid="${w.id}" title="步骤">▸</span>`:'<span class="wstep-none"></span>'}
       <input type="checkbox" class="cbox" ${w.done?'checked':''}>
-      <span class="t">${esc(w.t)}</span>${taskProgHtml(w)}<span class="badge ${w.pr}">${w.pr}</span><span class="type ${tcls}">${w.type}</span></div>
+      <span class="t">${esc(w.t)}</span><span class="src-tag ${w.monthlyId?'m':'w'}" title="${w.monthlyId?'来自月度计划':'独立周任务'}">${w.monthlyId?'月':'周'}</span>${taskProgHtml(w)}<span class="badge ${w.pr}">${w.pr}</span><span class="type ${tcls}">${w.type}</span></div>
     ${canStep?`<div class="wsteps" id="wsteps_${w.id}" hidden></div>`:''}</div>`;
 }
 function dayRow(w){
@@ -1078,7 +1122,7 @@ function dayRow(w){
     <div class="dayitem ${w.done?'checked':''}" data-id="${w.id}">
       ${canStep?`<span class="dstep-toggle" data-dstep="${w.id}" title="展开步骤,可点/拖步骤加入今日待办">▸</span>`:'<span class="wstep-none"></span>'}
       <input type="checkbox" class="cbox" ${w.done?'checked':''}>
-      <span class="t">${esc(w.t)}</span>${taskProgHtml(w)}<span class="badge ${w.pr}">${w.pr}</span><span class="type ${tcls}">${w.type}</span></div>
+      <span class="t">${esc(w.t)}</span><span class="src-tag ${w.monthlyId?'m':'w'}" title="${w.monthlyId?'来自月度计划':'独立周任务'}">${w.monthlyId?'月':'周'}</span>${taskProgHtml(w)}<span class="badge ${w.pr}">${w.pr}</span><span class="type ${tcls}">${w.type}</span></div>
     ${canStep?`<div class="dsteps" id="dsteps_${w.id}" hidden></div>`:''}</div>`;
 }
 function toggleDayPanel(wid){
@@ -1436,6 +1480,8 @@ function ganttBounds(mode){
   return {start:new Date(viewMonth), days:new Date(viewMonth.getFullYear(),viewMonth.getMonth()+1,0).getDate(), mode:'month'};
 }
 function dateAtIndex(b,i){ const d=new Date(b.start); d.setDate(b.start.getDate()+i); return fmtDate(d); }
+function addDays(ds,n){ const d=new Date(ds+'T00:00:00'); d.setDate(d.getDate()+n); return fmtDate(d); }
+function dayDiff(a,c){ return Math.round((new Date(c+'T00:00:00')-new Date(a+'T00:00:00'))/864e5); }
 function idxRaw(b,dateStr){ const d=new Date(dateStr+'T00:00:00');
   return Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate())-new Date(b.start.getFullYear(),b.start.getMonth(),b.start.getDate()))/864e5); }
 function indexOfDate(b,dateStr){ return Math.max(0,Math.min(idxRaw(b,dateStr),b.days-1)); }
@@ -1450,7 +1496,7 @@ function rerenderScheduling(){
 const ganttOpenSet=new Set();          // 展开步骤的任务条(weekly id)集合,可多开
 const STEP_CACHE={};                   // monthlyId → steps数组 | 'error'
 const STEP_INFLIGHT={};                // 拉取去重
-const taskColor=w=>w.type==='工作'?'#e8833a':'#3b82d6';
+const taskColor=w=>!w.monthlyId?'#8b6cc7':(w.type==='工作'?'#e8833a':'#3b82d6'); // 独立周任务紫色,月任务按类型橙/蓝
 const fmtMD=d=>{ const p=(d||'').split('-'); return (+p[1])+'/'+(+p[2]); };
 // 月/周两个甘特都重渲(步骤状态两处共享)
 function rerenderGantts(){ renderGantt('gantt','month'); if(document.getElementById('weekGantt')) renderGantt('weekGantt','week'); }
@@ -1463,7 +1509,7 @@ async function loadSteps(mid){
   rerenderGantts();
 }
 function toggleGanttSteps(w){
-  if(!w.monthlyId){ toast('该任务没有关联月度任务,无步骤'); return; }
+  if(!w.monthlyId){ toast('独立周任务没有步骤清单'); return; }
   if(ganttOpenSet.has(w.id)){ ganttOpenSet.delete(w.id); }
   else{ ganttOpenSet.add(w.id); if(Array.isArray(STEP_CACHE[w.monthlyId])) loadSteps(w.monthlyId); } // 有旧缓存先渲染,后台刷新
   rerenderGantts();
@@ -1480,17 +1526,15 @@ function subRowsHtml(w,b){
     let bar='';
     if(s.s&&s.e){
       const rs=idxRaw(b,s.s), re=idxRaw(b,s.e);
-      if(re<0||rs>b.days-1){ // 完全在本窗口网格外:只读指示块,防止一碰改写日期
+      if(re<0||rs>b.days-1){ // 完全在本窗口网格外:只读指示块(看不见的东西没法有意义地拖)
         const edge=re<0?0:b.days-1;
         bar=`<div class="mg-sbar ro" style="left:${edge/b.days*100}%;width:${100/b.days}%;background:${col}" title="${esc(s.text)} · 排期 ${s.s}→${s.e}(本窗口外)"></div>`;
-      }else if(rs<0||re>b.days-1){ // 部分越窗:按裁剪位置只读显示,防拖动改写真实日期
+      }else{ // 窗口内或部分越窗:都可拖(拖拽按真实日期差量,安全)
         const si=indexOfDate(b,s.s), ei=indexOfDate(b,s.e);
-        bar=`<div class="mg-sbar ro" style="left:${si/b.days*100}%;width:${Math.max((ei-si+1)/b.days*100,100/b.days)}%;background:${s.checked?'var(--green)':col}" title="${esc(s.text)} · ${s.s}→${s.e}(超出本窗口,编排请到月度甘特图)"></div>`;
-      }else{
-        const si=indexOfDate(b,s.s), ei=indexOfDate(b,s.e);
+        const partial=rs<0||re>b.days-1;
         const handles=(ei-si)>=1;
         bar=`<div class="mg-sbar${s.checked?' done':''}" data-bid="${s.id}" style="left:${si/b.days*100}%;width:${Math.max((ei-si+1)/b.days*100,100/b.days)}%;background:${s.checked?'var(--green)':col}"
-          title="${esc(s.text)} · ${s.s}→${s.e}">${handles?'<span class="mg-h l"></span><span class="mg-h r"></span>':''}<span class="sx" title="取消排期">×</span></div>`;
+          title="${esc(s.text)} · ${s.s}→${s.e}${partial?'(延伸出本窗口)':''}">${handles?'<span class="mg-h l"></span><span class="mg-h r"></span>':''}<span class="sx" title="取消排期">×</span></div>`;
       }
     }else{ // 未排期:幽灵条铺满父条范围;点击=整段落定,拖动/拖两端=调整后落定
       bar=`<div class="mg-sbar ghost" data-bid="${s.id}" style="left:${pS/b.days*100}%;width:${Math.max((pE-pS+1)/b.days*100,100/b.days)}%;border-color:${col}"
@@ -1504,6 +1548,7 @@ function renderGantt(containerId, mode){
   const el=document.getElementById(containerId); if(!el) return;
   const b=ganttBounds(mode); const isMonth = mode==='month';
   let tasks=DATA.weekly.filter(w=>w.s&&w.e);
+  if(mode==='month') tasks=tasks.filter(w=>w.monthlyId); // 独立周任务不进月度甘特
   { const s0=fmtDate(b.start), e0=dateAtIndex(b,b.days-1); tasks=tasks.filter(w=>w.s<=e0 && w.e>=s0); } // 只显示与本窗口重叠的任务(月/周同口径)
   tasks=ganttSortTasks(tasks);
 
@@ -1515,16 +1560,17 @@ function renderGantt(containerId, mode){
   if(!tasks.length) html+=`<div class="mg-row"><div class="mg-label"></div><div class="mg-track"><span style="color:var(--text3);font-size:12px;padding-left:8px">${mode==='week'?'本周暂无排期':'暂无排期'}</span></div></div>`;
   html+=tasks.map(w=>{
     const rawS=idxRaw(b,w.s), rawE=idxRaw(b,w.e);
-    const clip=rawS<0||rawE>b.days-1;   // 真实日期超出本窗口:只读防止拖动把日期改写成裁剪值
+    const clip=rawS<0||rawE>b.days-1;   // 延伸出本窗口(仅视觉提示,拖拽按真实日期差量,安全)
     const si=indexOfDate(b,w.s), ei=indexOfDate(b,w.e);
     const left=si/b.days*100, width=Math.max((ei-si+1)/b.days*100, 100/b.days);
     const col=taskColor(w);
     const open=ganttOpenSet.has(w.id) && w.monthlyId;
     const caret=w.monthlyId?`<span class="mg-caret${open?' open':''}">▸</span>`:'<span class="mg-caret" style="visibility:hidden">▸</span>';
-    const tip=clip?`${w.s}→${w.e}(超出本窗口,改期请到月度甘特图)`:`${w.s}→${w.e} · 拖动改期`;
-    let row=`<div class="mg-row${open?' mg-rowopen':''}" data-rowwid="${w.id}"><div class="mg-label${w.monthlyId?' haskids':''}" data-wlabel="${w.id}" draggable="true" title="${esc(w.t)} · 点击展开步骤 · 上下拖动调整顺序">${caret}<span class="lt">${esc(w.t)}</span><span class="lux" data-lux="${w.id}" title="退回规划池(取消这条排期)">×</span></div>
+    const tip=`${w.s}→${w.e}${clip?'(延伸出本窗口)':''} · 拖动改期`;
+    const rmTip=w.monthlyId?'退回规划池(取消这条排期)':'删除该周任务';
+    let row=`<div class="mg-row${open?' mg-rowopen':''}" data-rowwid="${w.id}"><div class="mg-label${w.monthlyId?' haskids':''}" data-wlabel="${w.id}" draggable="true" title="${esc(w.t)}${w.monthlyId?' · 点击展开步骤':''} · 上下拖动调整顺序">${caret}<span class="lt">${esc(w.t)}</span><span class="lux" data-lux="${w.id}" title="${rmTip}">×</span></div>
       <div class="mg-track"><div class="mg-bar${clip?' clip':''}${open?' mg-openbar':''}" data-wid="${w.id}" style="left:${left}%;width:${width}%;background:${col}"
-        title="${esc(w.t)} · ${tip} · 点击展开步骤">${clip?'':'<span class="mg-h l"></span>'}<span class="mg-txt">${w.pr||''}</span>${clip?'':'<span class="mg-h r"></span>'}<span class="wux" title="退回规划池(取消这条排期)">↩</span></div></div></div>`;
+        title="${esc(w.t)} · ${tip}">${'<span class="mg-h l"></span>'}<span class="mg-txt">${w.monthlyId?'':'周·'}${w.pr||''}</span>${'<span class="mg-h r"></span>'}<span class="wux" title="${rmTip}">↩</span></div></div></div>`;
     if(open) row+=subRowsHtml(w,b);
     return row;
   }).join('');
@@ -1537,28 +1583,32 @@ function bindGantt(el, b, isMonth){
   const geom=()=>{ const r=axis.getBoundingClientRect(); return {left:r.left, dayW:r.width/b.days}; };
   el.querySelectorAll('.mg-bar').forEach(bar=>{
     const wid=bar.dataset.wid, w=DATA.weekly.find(x=>x.id===wid); if(!w) return;
-    const wux=bar.querySelector('.wux');   // ↩ 退回规划池(clip 只读条也可退)
+    const wux=bar.querySelector('.wux');   // ↩ 退回/删除
     if(wux){ wux.addEventListener('pointerdown',e=>e.stopPropagation());
       wux.addEventListener('click',e=>{ e.stopPropagation(); unscheduleBar(wid); }); }
-    if(bar.classList.contains('clip')){ bar.addEventListener('click',()=>toggleGanttSteps(w)); return; } // 越窗条:只可点击展开,不可拖
-    let mode=null, startX=0, origS=0, origE=0, moved=false;
-    const down=(e,m)=>{ mode=m; moved=false; startX=e.clientX; origS=indexOfDate(b,w.s); origE=indexOfDate(b,w.e);
-      bar._s=origS; bar._e=origE; e.preventDefault(); e.stopPropagation();
+    // 拖拽差量作用于真实日期(跨窗条也可安全拖动,不会被窗口裁剪改写)
+    let mode=null, startX=0, moved=false;
+    const preview=(ns,ne)=>{ const si=indexOfDate(b,ns), ei=indexOfDate(b,ne);
+      bar.style.left=(si/b.days*100)+'%'; bar.style.width=(Math.max(ei-si+1,1)/b.days*100)+'%'; };
+    const down=(e,m)=>{ mode=m; moved=false; startX=e.clientX; bar._ns=w.s; bar._ne=w.e;
+      e.preventDefault(); e.stopPropagation();
       document.addEventListener('pointermove',move); document.addEventListener('pointerup',up); };
     const move=(e)=>{ if(mode===null) return; if(Math.abs(e.clientX-startX)>4) moved=true;
       const g=geom(); const delta=Math.round((e.clientX-startX)/g.dayW);
-      let s=origS, en=origE;
-      if(mode==='move'){ const span=origE-origS; s=origS+delta; s=Math.max(0,Math.min(s,b.days-1-span)); en=s+span; }
-      else if(mode==='l'){ s=Math.max(0,Math.min(origS+delta,origE)); en=origE; }
-      else if(mode==='r'){ en=Math.max(origS,Math.min(origE+delta,b.days-1)); s=origS; }
-      bar.style.left=(s/b.days*100)+'%'; bar.style.width=((en-s+1)/b.days*100)+'%'; bar._s=s; bar._e=en; };
+      let ns=w.s, ne=w.e;
+      if(mode==='move'){ ns=addDays(w.s,delta); ne=addDays(w.e,delta); }
+      else if(mode==='l'){ ns=addDays(w.s,delta); if(ns>ne) ns=ne; }
+      else if(mode==='r'){ ne=addDays(w.e,delta); if(ne<ns) ne=ns; }
+      bar._ns=ns; bar._ne=ne; preview(ns,ne); };
     const up=async()=>{ document.removeEventListener('pointermove',move); document.removeEventListener('pointerup',up);
       if(mode===null) return; const wasMode=mode; mode=null;
-      if(!moved){ if(wasMode==='move') toggleGanttSteps(w); return; }  // 没拖动=点击→展开步骤(手柄点击忽略);toggle 后 bar 已销毁,直接返回
-      const ns=dateAtIndex(b,bar._s), ne=dateAtIndex(b,bar._e);
+      if(!moved){ if(wasMode==='move') toggleGanttSteps(w); return; }  // 没拖动=点击→展开步骤(手柄点击忽略)
+      const ns=bar._ns, ne=bar._ne;
       if(ns===w.s && ne===w.e) return;                                 // 拖出去又拖回原位=不提交也不展开
       const oS=w.s,oE=w.e,oW=w.w; w.s=ns; w.e=ne; w.w=isoWeekLabelJS(ns);
-      try{ await apiPost('/api/set-weekly-schedule',{pageId:wid,start:ns,end:ne}); rerenderScheduling(); toast('已改期 ✓'); }
+      const s0=fmtDate(b.start), e0=dateAtIndex(b,b.days-1);
+      const outNote=(ne<s0||ns>e0)?'(已移出当前窗口)':'';
+      try{ await apiPost('/api/set-weekly-schedule',{pageId:wid,start:ns,end:ne}); rerenderScheduling(); toast(`已改期 ${ns}→${ne} ${outNote}✓`); }
       catch(err){ console.error(err); w.s=oS;w.e=oE;w.w=oW; await reload().catch(()=>{}); toast('网络波动,已同步'); } };
     bar.addEventListener('pointerdown',e=>{ if(e.button===0) down(e,'move'); });
     const hl=bar.querySelector('.mg-h.l'); if(hl) hl.addEventListener('pointerdown',e=>{ if(e.button===0) down(e,'l'); });
@@ -1608,12 +1658,15 @@ function bindGantt(el, b, isMonth){
 // 退回规划池:归档该排期条;任务仍在规划池(变回未排,可重新拖入),步骤不受影响
 async function unscheduleBar(wid){
   const w=DATA.weekly.find(x=>x.id===wid); if(!w) return;
-  if(!confirm(`把「${w.t}」退回规划池?\n将移除这条排期(${w.s}→${w.e}),任务仍在规划池可重新拖入甘特图;步骤不受影响。`)) return;
+  const msg=w.monthlyId
+    ? `把「${w.t}」退回规划池?\n将移除这条排期(${w.s}→${w.e}),任务仍在规划池可重新拖入甘特图;步骤不受影响。`
+    : `删除周任务「${w.t}」?\n独立周任务不在规划池里,删除后此处不可恢复(Notion 回收站可找回)。`;
+  if(!confirm(msg)) return;
   try{
     await apiPost('/api/delete',{pageId:wid});
     const k=DATA.weekly.indexOf(w); if(k>=0) DATA.weekly.splice(k,1);
     ganttOpenSet.delete(wid);
-    rerenderScheduling(); toast('已退回规划池,可重新排期 ✓');
+    rerenderScheduling(); toast(w.monthlyId?'已退回规划池,可重新排期 ✓':'周任务已删除 ✓');
   }catch(err){ console.error(err); await reload().catch(()=>{}); toast('网络波动,已同步'); }
 }
 // 行排序持久化:以全量任务的当前排序为基准重编号(排序号写周计划库「排序」number),只写有变化的
@@ -1713,28 +1766,40 @@ function bindSubRows(el, b){
         try{ await apiPost('/api/step-schedule',{pageId:w.monthlyId,blockId:s.id,start:null,end:null}); toast('已取消排期'); }
         catch(err){ console.error(err); s.s=oS; s.e=oE; rerenderGantts(); toast('网络波动,请重试'); } });
     }
-    const curS=s.s?indexOfDate(b,s.s):pS, curE=s.e?indexOfDate(b,s.e):pE;
-    const inParent=curS>=pS && curE<=pE;
-    const loB=inParent?pS:0, hiB=inParent?pE:b.days-1;
+    // 已排期条=真实日期差量(部分越窗也安全);幽灵条=窗口内落定(排到当前视图内,合理)
+    const inParent=!!(s.s&&s.e) && s.s>=w.s && s.e<=w.e;   // 真实日期比较;在父范围内则拖动不越父界
     let mode=null, startX=0, origS=0, origE=0, moved=false;
-    const curSNow=()=>s.s?indexOfDate(b,s.s):pS, curENow=()=>s.e?indexOfDate(b,s.e):pE;
-    const down=(e,m)=>{ mode=m; moved=false; startX=e.clientX; origS=curSNow(); origE=curENow();
-      bar._s=origS; bar._e=origE; e.preventDefault(); e.stopPropagation();
+    const preview=(si,ei)=>{ bar.style.left=(si/b.days*100)+'%'; bar.style.width=(Math.max(ei-si+1,1)/b.days*100)+'%'; };
+    const down=(e,m)=>{ mode=m; moved=false; startX=e.clientX;
+      if(isGhost){ origS=pS; origE=pE; bar._ns=dateAtIndex(b,pS); bar._ne=dateAtIndex(b,pE); }
+      else{ bar._ns=s.s; bar._ne=s.e; }
+      e.preventDefault(); e.stopPropagation();
       document.addEventListener('pointermove',move); document.addEventListener('pointerup',up); };
     const move=(e)=>{ if(mode===null) return; if(Math.abs(e.clientX-startX)>4) moved=true;
-      const g=geom(); const delta=Math.round((e.clientX-startX)/g.dayW);
-      let ss=origS, ee=origE;
-      if(mode==='move'){ const span=origE-origS; ss=Math.max(loB,Math.min(origS+delta,hiB-span)); ee=ss+span; }
-      else if(mode==='l'){ ss=Math.max(loB,Math.min(origS+delta,origE)); }
-      else if(mode==='r'){ ee=Math.max(origS,Math.min(origE+delta,hiB)); }
-      bar.style.left=(ss/b.days*100)+'%'; bar.style.width=((ee-ss+1)/b.days*100)+'%'; bar._s=ss; bar._e=ee; };
+      const g=geom(); let delta=Math.round((e.clientX-startX)/g.dayW);
+      if(isGhost){ // 窗口索引数学,clamp 在父条可见段
+        let ss=origS, ee=origE;
+        if(mode==='move'){ const span=origE-origS; ss=Math.max(pS,Math.min(origS+delta,pE-span)); ee=ss+span; }
+        else if(mode==='l'){ ss=Math.max(pS,Math.min(origS+delta,origE)); }
+        else if(mode==='r'){ ee=Math.max(origS,Math.min(origE+delta,pE)); }
+        bar._ns=dateAtIndex(b,ss); bar._ne=dateAtIndex(b,ee); preview(ss,ee);
+      }else{      // 真实日期差量;在父范围内则 delta 夹在父界内
+        let ns=s.s, ne=s.e;
+        if(mode==='move'){ if(inParent) delta=Math.max(dayDiff(s.s,w.s), Math.min(delta, dayDiff(s.e,w.e)));
+          ns=addDays(s.s,delta); ne=addDays(s.e,delta); }
+        else if(mode==='l'){ if(inParent) delta=Math.max(dayDiff(s.s,w.s), delta);
+          ns=addDays(s.s,delta); if(ns>ne) ns=ne; }
+        else if(mode==='r'){ if(inParent) delta=Math.min(dayDiff(s.e,w.e), delta);
+          ne=addDays(s.e,delta); if(ne<ns) ne=ns; }
+        bar._ns=ns; bar._ne=ne; preview(indexOfDate(b,ns), indexOfDate(b,ne));
+      } };
     const up=async()=>{ document.removeEventListener('pointermove',move); document.removeEventListener('pointerup',up);
       if(mode===null) return; const wasMode=mode; mode=null;
-      const ns=dateAtIndex(b,bar._s), ne=dateAtIndex(b,bar._e);
+      const ns=bar._ns, ne=bar._ne;
       if(!isGhost && ns===s.s && ne===s.e) return;            // 已排期条没变化=不提交
       if(isGhost && wasMode!=='move' && !moved) return;       // 幽灵条手柄点了没动=不提交(点条身=整段落定)
       const oS=s.s,oE=s.e; s.s=ns; s.e=ne; rerenderGantts();
-      try{ await apiPost('/api/step-schedule',{pageId:w.monthlyId,blockId:s.id,start:ns,end:ne}); toast('步骤已排期 ✓'); }
+      try{ await apiPost('/api/step-schedule',{pageId:w.monthlyId,blockId:s.id,start:ns,end:ne}); toast('步骤已排期 '+ns+'→'+ne+' ✓'); }
       catch(err){ console.error(err); s.s=oS; s.e=oE; rerenderGantts(); toast('网络波动,请重试'); } };
     bar.addEventListener('pointerdown',e=>{ if(e.button===0) down(e,'move'); });
     const hl=bar.querySelector('.mg-h.l'); if(hl) hl.addEventListener('pointerdown',e=>{ if(e.button===0) down(e,'l'); });
