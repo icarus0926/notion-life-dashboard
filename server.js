@@ -407,6 +407,21 @@ app.post('/api/step-delete', async (req, res) => {
   } catch (e) { res.status(500).json({ error: String(e) }); }
 });
 
+// 任务全景图:批量拉取多个宿主页的步骤(并发≤3,单页失败置空不阻断)
+app.post('/api/stepsmap', async (req, res) => {
+  try {
+    const ids = (req.body || {}).ids || [];
+    if (!Array.isArray(ids) || ids.length > 100) return res.status(400).json({ error: 'bad ids' });
+    const out = {};
+    for (let i = 0; i < ids.length; i += 3) {
+      await Promise.all(ids.slice(i, i + 3).map(async id => {
+        try { out[id] = await listTodos(id); } catch (e) { out[id] = []; }
+      }));
+    }
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: String(e) }); }
+});
+
 // 步骤改名:替换 to_do 文本,保留尾部 📅 排期标记与勾选状态
 app.post('/api/step-rename', async (req, res) => {
   try {

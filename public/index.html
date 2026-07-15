@@ -335,6 +335,16 @@
   .dtag{flex:none;font-size:11px;color:var(--text3);background:#eceae7;padding:0 7px;border-radius:9px}
   .src-step{flex:none;font-size:11px;color:#7a5ec2;background:#efe9fb;padding:0 7px;border-radius:9px;margin-left:6px}
   .todo-drop-over{outline:2px dashed var(--green);outline-offset:2px;background:#eef7f0;border-radius:8px}
+  /* 任务全景图 */
+  #graphCanvas{cursor:grab}
+  #graphCanvas.dragging{cursor:grabbing}
+  #graphLegend{position:absolute;right:16px;top:14px;font-size:11.5px;color:var(--text2);line-height:2;
+    background:rgba(255,255,255,.9);border:1px solid var(--border);padding:6px 12px;border-radius:10px;pointer-events:none}
+  #graphLegend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:baseline}
+  #graphLoading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:var(--text3);font-size:13px;background:rgba(255,255,255,.6)}
+  #graphTip{position:absolute;display:none;pointer-events:none;background:var(--text);color:#fff;
+    font-size:12px;padding:5px 10px;border-radius:7px;max-width:320px;z-index:5}
   .day-hero{padding:22px 24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
   .day-hero .big{font-size:38px;font-weight:700;letter-spacing:1px}
   .day-hero .meta{font-size:13px;color:var(--text2);line-height:1.8}
@@ -401,6 +411,14 @@
         <div class="card kpi" style="cursor:pointer" data-goto="month"><div class="lab">🗓️ 月度 + 任务池 →</div></div>
         <div class="card kpi" style="cursor:pointer" data-goto="week"><div class="lab">📆 周计划 →</div></div>
         <div class="card kpi" style="cursor:pointer" data-goto="day"><div class="lab">☀️ 每日执行 →</div></div>
+      </div>
+      <h2 style="display:flex;align-items:center"><span class="bar" style="background:#8b6cc7"></span>任务全景图 · 拖节点 / 滚轮缩放 / 拖空白平移 / 点击跳转
+        <button class="rollbtn" id="graphRefresh">↻ 重新生成</button></h2>
+      <div class="card" style="padding:6px;position:relative">
+        <canvas id="graphCanvas" style="width:100%;height:560px;display:block"></canvas>
+        <div id="graphLegend"></div>
+        <div id="graphLoading">正在拉取任务树并布局…</div>
+        <div id="graphTip"></div>
       </div>
     </section>
 
@@ -642,6 +660,9 @@ function renderAll(){
 
   renderBooks(document.querySelector('.tab.on')?.dataset.tab || 'invest');
   updateTimeHeads();
+  // 全景图:数据刷新后失效;若正停在总览页则立即重建,否则下次进入时再建
+  if(document.getElementById('page-overview').classList.contains('on')) buildGraph(true);
+  else GRAPH=null;
 }
 // 每日页:视图日所在周的任务参考列表 + 日期英雄区(renderAll 与日切换共用)
 function renderDayPage(){
@@ -1873,6 +1894,143 @@ function refreshWeekCards(){
   weekCol('w27',label);
 }
 
+/* ============ 任务全景图(自绘力导向,零依赖) ============ */
+let GRAPH=null;
+const GCOLOR={center:'#e8b23a',hub:'#8a8378',goal:'#d4a017',work:'#e8833a',growth:'#3b82d6',week:'#8b6cc7',pool:'#c0b9ae',step:'#9fb4c7',stepdone:'#3da56b'};
+function graphSimulate(nodes, edges, ticks){
+  const idx=Object.fromEntries(nodes.map((n,i)=>[n.id,i]));
+  for(let t=0;t<ticks;t++){
+    const cool=1-t/ticks;
+    for(const n of nodes){ n.fx=0; n.fy=0; }
+    for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){
+      const a=nodes[i], b=nodes[j];
+      let dx=a.x-b.x, dy=a.y-b.y; const d2=dx*dx+dy*dy+0.01;
+      if(d2>160000) continue;
+      const d=Math.sqrt(d2), f=2400/d2;
+      dx/=d; dy/=d; a.fx+=dx*f; a.fy+=dy*f; b.fx-=dx*f; b.fy-=dy*f;
+    }
+    for(const e of edges){
+      const a=nodes[idx[e[0]]], b=nodes[idx[e[1]]]; if(!a||!b) continue;
+      let dx=b.x-a.x, dy=b.y-a.y; const d=Math.sqrt(dx*dx+dy*dy)+0.01;
+      const f=0.06*(d-e[2]); dx/=d; dy/=d;
+      a.fx+=dx*f*8; a.fy+=dy*f*8; b.fx-=dx*f*8; b.fy-=dy*f*8;
+    }
+    for(const n of nodes){
+      if(n.pin) continue;
+      n.fx+=-n.x*0.02; n.fy+=-n.y*0.02;   // 向心
+      n.x+=Math.max(-14,Math.min(14,n.fx))*cool;
+      n.y+=Math.max(-14,Math.min(14,n.fy))*cool;
+    }
+  }
+}
+async function buildGraph(force){
+  const cv=document.getElementById('graphCanvas'); if(!cv) return;
+  if(GRAPH&&!force){ drawGraph(); return; }
+  document.getElementById('graphLoading').style.display='flex';
+  const monthly=DATA.monthly||[], weekly=DATA.weekly||[];
+  const standalone=weekly.filter(w=>!w.monthlyId);
+  const hosts=[...monthly.map(m=>m.id), ...standalone.map(w=>w.id)];
+  let smap={};
+  try{ if(hosts.length) smap=await apiPost('/api/stepsmap',{ids:hosts}); }catch(e){ console.error(e); }
+  const nodes=[], edges=[];
+  const add=n=>{ n.x=(Math.random()-0.5)*40; n.y=(Math.random()-0.5)*40; nodes.push(n); return n; };
+  add({id:'@c',label:'⭐ 天罡 2026',type:'center',r:17,pin:true,x:0,y:0});
+  add({id:'@goals',label:'年度目标',type:'hub',r:11,nav:'year',x:-260,y:-160});
+  add({id:'@pool',label:'任务池',type:'hub',r:11,nav:'month',x:260,y:170});
+  edges.push(['@c','@goals',190],['@c','@pool',190]);
+  (DATA.goals||[]).forEach((g,i)=>{ const a=i/Math.max(1,DATA.goals.length)*Math.PI*2;
+    add({id:'g'+g.id,label:g.n,type:'goal',r:7,nav:'year',x:-260+Math.cos(a)*80,y:-160+Math.sin(a)*80});
+    edges.push(['@goals','g'+g.id,75]); });
+  const pending=[...(DATA.growthPool||[]),...(DATA.workPool||[])].filter(x=>x.st==='待分配');
+  pending.forEach((p,i)=>{ const a=i/Math.max(1,pending.length)*Math.PI*2;
+    add({id:'p'+p.id,label:p.t,type:'pool',r:5,nav:'month',x:260+Math.cos(a)*90,y:170+Math.sin(a)*90});
+    edges.push(['@pool','p'+p.id,62]); });
+  const hostNode={};
+  monthly.forEach((m,i)=>{ const a=i/Math.max(1,monthly.length)*Math.PI*2;
+    hostNode[m.id]=add({id:m.id,label:m.n,type:m.type==='工作'?'work':'growth',r:9,nav:'month',x:Math.cos(a)*180,y:Math.sin(a)*180});
+    edges.push(['@c',m.id,155]); });
+  standalone.forEach((w,i)=>{ const a=(i+0.5)/Math.max(1,standalone.length)*Math.PI*2;
+    hostNode[w.id]=add({id:w.id,label:w.t,type:'week',r:9,nav:'week',x:Math.cos(a)*220,y:Math.sin(a)*220});
+    edges.push(['@c',w.id,175]); });
+  for(const [hid,steps] of Object.entries(smap)){
+    const h=hostNode[hid]; if(!h) continue;
+    (steps||[]).forEach((s,i)=>{ const a=i/Math.max(1,steps.length)*Math.PI*2;
+      add({id:'s'+s.id,label:s.text,type:s.checked?'stepdone':'step',r:4.5,nav:'month',x:h.x+Math.cos(a)*46,y:h.y+Math.sin(a)*46});
+      edges.push([hid,'s'+s.id,48]); });
+  }
+  graphSimulate(nodes, edges, 320);
+  GRAPH={nodes, edges, idx:Object.fromEntries(nodes.map((n,i)=>[n.id,i])), scale:1, tx:0, ty:0};
+  fitGraph(); drawGraph();
+  document.getElementById('graphLoading').style.display='none';
+  document.getElementById('graphLegend').innerHTML=
+    `<div><i style="background:${GCOLOR.goal}"></i>年度目标</div><div><i style="background:${GCOLOR.work}"></i>月任务·工作</div>
+     <div><i style="background:${GCOLOR.growth}"></i>月任务·成长</div><div><i style="background:${GCOLOR.week}"></i>周任务</div>
+     <div><i style="background:${GCOLOR.pool}"></i>池·待分配</div><div><i style="background:${GCOLOR.step}"></i>子任务/步骤</div>
+     <div><i style="background:${GCOLOR.stepdone}"></i>已完成步骤</div>`;
+}
+function fitGraph(){
+  const cv=document.getElementById('graphCanvas'), G=GRAPH; if(!cv||!G) return;
+  const W=cv.clientWidth, H=cv.clientHeight;
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  for(const n of G.nodes){ x0=Math.min(x0,n.x); y0=Math.min(y0,n.y); x1=Math.max(x1,n.x); y1=Math.max(y1,n.y); }
+  const pad=70;
+  G.scale=Math.min(1.4, Math.min((W-pad*2)/Math.max(1,x1-x0), (H-pad*2)/Math.max(1,y1-y0)));
+  G.tx=W/2-(x0+x1)/2*G.scale; G.ty=H/2-(y0+y1)/2*G.scale;
+}
+function drawGraph(){
+  const cv=document.getElementById('graphCanvas'), G=GRAPH; if(!cv||!G) return;
+  const dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight;
+  if(cv.width!==W*dpr||cv.height!==H*dpr){ cv.width=W*dpr; cv.height=H*dpr; }
+  const ctx=cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
+  const sx=n=>n.x*G.scale+G.tx, sy=n=>n.y*G.scale+G.ty;
+  ctx.strokeStyle='#e3ded7'; ctx.lineWidth=1;
+  for(const e of G.edges){ const a=G.nodes[G.idx[e[0]]], b=G.nodes[G.idx[e[1]]]; if(!a||!b) continue;
+    ctx.beginPath(); ctx.moveTo(sx(a),sy(a)); ctx.lineTo(sx(b),sy(b)); ctx.stroke(); }
+  for(const n of G.nodes){
+    const x=sx(n), y=sy(n), r=n.r*Math.max(0.7,Math.min(1.4,G.scale));
+    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fillStyle=GCOLOR[n.type]||'#999'; ctx.fill();
+    ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
+    if(n.r>=7||G.scale>=0.9){
+      ctx.fillStyle=n.type==='center'?'#6b5410':'#77716b';
+      ctx.font=(n.type==='center'?'600 12px':'10px')+' system-ui,sans-serif';
+      ctx.textAlign='center';
+      const lb=n.label.length>9?n.label.slice(0,9)+'…':n.label;
+      ctx.fillText(lb, x, y+r+11);
+    }
+  }
+}
+(function bindGraph(){
+  const cv=document.getElementById('graphCanvas'); if(!cv) return;
+  const tip=document.getElementById('graphTip');
+  let drag=null, panning=false, px=0, py=0, downAt=null;
+  const hit=(mx,my)=>{ const G=GRAPH; if(!G) return null;
+    for(let i=G.nodes.length-1;i>=0;i--){ const n=G.nodes[i];
+      const x=n.x*G.scale+G.tx, y=n.y*G.scale+G.ty, r=Math.max(6,n.r*G.scale);
+      if((mx-x)**2+(my-y)**2<=(r+3)**2) return n; }
+    return null; };
+  const pos=e=>{ const b=cv.getBoundingClientRect(); return [e.clientX-b.left, e.clientY-b.top]; };
+  cv.addEventListener('pointerdown',e=>{ const [mx,my]=pos(e); const n=hit(mx,my);
+    downAt=[mx,my]; if(n&&n.type!=='center'){ drag=n; } else { panning=true; px=mx; py=my; }
+    cv.classList.add('dragging'); cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove',e=>{ const [mx,my]=pos(e); const G=GRAPH; if(!G) return;
+    if(drag){ drag.x=(mx-G.tx)/G.scale; drag.y=(my-G.ty)/G.scale; drawGraph(); return; }
+    if(panning){ G.tx+=mx-px; G.ty+=my-py; px=mx; py=my; drawGraph(); return; }
+    const n=hit(mx,my);
+    if(n){ tip.style.display='block'; tip.style.left=(mx+14)+'px'; tip.style.top=(my+10)+'px'; tip.textContent=n.label; cv.style.cursor='pointer'; }
+    else { tip.style.display='none'; cv.style.cursor='grab'; } });
+  cv.addEventListener('pointerup',e=>{ const [mx,my]=pos(e);
+    const clicked=downAt&&Math.abs(mx-downAt[0])<4&&Math.abs(my-downAt[1])<4;
+    if(clicked){ const n=hit(mx,my); if(n&&n.nav) showPage(n.nav); }
+    drag=null; panning=false; downAt=null; cv.classList.remove('dragging'); });
+  cv.addEventListener('wheel',e=>{ e.preventDefault(); const G=GRAPH; if(!G) return;
+    const [mx,my]=pos(e); const k=e.deltaY<0?1.12:1/1.12;
+    const ns=Math.max(0.3,Math.min(3,G.scale*k));
+    G.tx=mx-(mx-G.tx)*(ns/G.scale); G.ty=my-(my-G.ty)*(ns/G.scale); G.scale=ns; drawGraph(); },{passive:false});
+  document.getElementById('graphRefresh').addEventListener('click',()=>buildGraph(true));
+  window.addEventListener('resize',()=>{ if(GRAPH&&document.getElementById('page-overview').classList.contains('on')) drawGraph(); });
+})();
 /* ============ 导航 ============ */
 function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
@@ -1881,6 +2039,7 @@ function showPage(id){
   document.querySelector('.nav[data-page="'+id+'"]').classList.add('on');
   if(id==='week') renderGantt('weekGantt','week');
   if(id==='month') renderGantt('gantt','month');
+  if(id==='overview'&&DATA) buildGraph(false);
   window.scrollTo({top:0});
 }
 document.querySelectorAll('.nav').forEach(n=>n.addEventListener('click',()=>showPage(n.dataset.page)));
