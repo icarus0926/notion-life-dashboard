@@ -1,5 +1,7 @@
 # ⭐ 天罡日程管理系统 (notion-life-dashboard)
 
+> **📢 本项目已停止迭代**：作者已迁移到 2.0 版 [tiangang-planner](https://github.com/icarus0926/tiangang-planner)——本地 SQLite 任务树版本(不再依赖 Notion,递归子任务+完成冒泡+力导向全景图)。本仓库作为 Notion 双向同步方案保留存档,仍可正常使用。
+
 自托管的 **Notion 双向实时同步** 目标管理仪表盘：把 Notion 里的 **年度目标 → 任务池 → 月度计划 → 周排期 → 每日待办** 串成一条完整的执行闭环，用一张好看的网页大屏来规划和推进。
 
 - **一个后端文件 + 一个前端文件**（`server.js` + `public/index.html`），无构建、无数据库
